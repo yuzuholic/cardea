@@ -33,6 +33,8 @@ else
   echo "note: gum is not installed, so only the plain prompts are tested"
 fi
 SYS=/usr/bin:/bin:/usr/sbin:/sbin
+# plain mode means "gum isn't installed yet", which a system-wide gum makes untestable.
+! PATH=$SYS command -v gum >/dev/null || fail "gum is in a system directory; install it elsewhere so plain mode can run without it"
 ESC=$(printf '\033')
 
 # setup <case> <mode>: a minimal copy of the repo, a scratch HOME, and this mode's PATH.

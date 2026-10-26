@@ -37,10 +37,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - run: sudo apt-get update && sudo apt-get install -y expect
-      # keep in step with the Brewfile's gum (homebrew has 2.0.2)
+      # keep in step with the Brewfile's gum (homebrew has 2.0.2). unpacked outside /usr/bin on
+      # purpose: the plain-mode cases need a PATH with no gum on it.
       - run: |
-          curl -fsSL -o gum.deb https://github.com/charmbracelet/gum/releases/download/v2.0.2/gum_2.0.2_amd64.deb
-          sudo dpkg -i gum.deb
+          mkdir -p "$RUNNER_TEMP/gum"
+          curl -fsSL https://github.com/charmbracelet/gum/releases/download/v2.0.2/gum_2.0.2_Linux_x86_64.tar.gz \
+            | tar xz -C "$RUNNER_TEMP/gum" --strip-components=1
+          echo "$RUNNER_TEMP/gum" >> "$GITHUB_PATH"
       - run: sh tests/install.sh
 
   nas:
