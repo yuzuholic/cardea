@@ -1,0 +1,57 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "@plannotator/opencode@0.28.31"
+  ],
+  "mcp": {
+    "serena": {
+      "type": "local",
+      "enabled": true,
+      "command": [
+        "uvx",
+        "--from",
+        "git+https://github.com/oraios/serena@v2.1.0",
+        "serena",
+        "start-mcp-server",
+        "--context",
+        "ide-assistant"
+      ]
+    },
+    "container-use": {
+      "type": "local",
+      "enabled": true,
+      "command": ["container-use", "stdio"]
+    },
+    "xcodebuild": {
+      "type": "local",
+      "enabled": true,
+      "command": ["npx", "-y", "xcodebuildmcp@2.7.0", "mcp"],
+      "environment": {
+        "XCODEBUILDMCP_SENTRY_DISABLED": "true"
+      }
+    },
+    "swiftlens": {
+      "type": "local",
+      "enabled": true,
+      "command": ["uvx", "swiftlens@0.2.14"]
+    },
+    "mcpbridge": {
+      "type": "local",
+      "enabled": false,
+      "command": ["xcrun", "mcpbridge", "serve"]
+    },
+    "basic-memory": {
+      "type": "remote",
+      "enabled": true,
+      "url": "{env:BASIC_MEMORY_URL}"
+    },
+    "graphify": {
+      "type": "local",
+      "enabled": false,
+      "command": ["graphify", "mcp"],
+      "environment": {
+        "GRAPHIFY_ROOT": "{env:GRAPHIFY_ROOT}"
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+# cardea — global ruler config, linked to ~/.config/ruler
+#
+# division of ownership: ruler distributes RULES only. MCP servers and plugins live in
+# opencode.json, which ruler must not touch — hence mcp.enabled = false.
+
+default_agents = ["opencode"]
+
+[mcp]
+enabled = false
+
+[agents.opencode]
+enabled = true
