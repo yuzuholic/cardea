@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "cardea",
+  "description": "The Cardea agentic coding setup.",
+  "owner": {
+    "name": "yuzuholic",
+    "url": "https://github.com/yuzuholic"
+  },
+  "plugins": [
+    {
+      "name": "cardea",
+      "description": "Skills and agents for the Cardea stack: iOS work, reviews, releases, and the self-hosted tools.",
+      "source": "./plugins/cardea"
+    }
+  ]
+}

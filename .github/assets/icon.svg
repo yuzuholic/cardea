@@ -1,0 +1,21 @@
+<svg width="1024" height="1024" viewBox="0 0 110 110" xmlns="http://www.w3.org/2000/svg">
+  <!-- Cardea: four Aletheia peaks as butterfly wings on one body. Rounded copy of docs/app/icon.svg for the README, where nothing masks the corners. -->
+  <rect x="0" y="0" width="110" height="110" rx="24" fill="#0a0a0a"/>
+  <g transform="rotate(-40 55 58)">
+  <path d="M48.00 52.00 C50.92 48.76 52.67 37.43 53.83 27.71 C54.42 21.24 55.00 18.00 55.00 18.00 L55.00 52.00 Z" fill="#ffffff" opacity="1.0"/>
+  <path d="M62.00 52.00 C59.08 48.76 57.33 37.43 56.17 27.71 C55.58 21.24 55.00 18.00 55.00 18.00 L55.00 52.00 Z" fill="#ffffff" opacity="0.55"/>
+  </g>
+  <g transform="rotate(40 55 58)">
+  <path d="M48.00 52.00 C50.92 48.76 52.67 37.43 53.83 27.71 C54.42 21.24 55.00 18.00 55.00 18.00 L55.00 52.00 Z" fill="#ffffff" opacity="0.55"/>
+  <path d="M62.00 52.00 C59.08 48.76 57.33 37.43 56.17 27.71 C55.58 21.24 55.00 18.00 55.00 18.00 L55.00 52.00 Z" fill="#ffffff" opacity="0.288"/>
+  </g>
+  <g transform="rotate(-140 55 58)">
+  <path d="M49.50 52.00 C51.79 49.71 53.17 41.71 54.08 34.86 C54.54 30.29 55.00 28.00 55.00 28.00 L55.00 52.00 Z" fill="#ffffff" opacity="0.55"/>
+  <path d="M60.50 52.00 C58.21 49.71 56.83 41.71 55.92 34.86 C55.46 30.29 55.00 28.00 55.00 28.00 L55.00 52.00 Z" fill="#ffffff" opacity="0.288"/>
+  </g>
+  <g transform="rotate(140 55 58)">
+  <path d="M49.50 52.00 C51.79 49.71 53.17 41.71 54.08 34.86 C54.54 30.29 55.00 28.00 55.00 28.00 L55.00 52.00 Z" fill="#ffffff" opacity="0.288"/>
+  <path d="M60.50 52.00 C58.21 49.71 56.83 41.71 55.92 34.86 C55.46 30.29 55.00 28.00 55.00 28.00 L55.00 52.00 Z" fill="#ffffff" opacity="0.18"/>
+  </g>
+  <rect x="53.6" y="42" width="2.8" height="34" rx="1.4" fill="#ffffff" opacity="1.0"/>
+</svg>

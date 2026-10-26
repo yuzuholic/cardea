@@ -1,0 +1,58 @@
+---
+title: Claude Code
+description: What Cardea sets up inside Claude Code, and what it leaves alone.
+---
+
+Claude Code keeps its own state next to its settings: sessions, plugin caches, and the list
+of MCP servers. Cardea therefore never links a whole folder. It owns a few named things and
+leaves everything else to you.
+
+## What Cardea owns
+
+| Thing | Where it lives | How it gets there |
+|---|---|---|
+| Global rules | `~/.claude/CLAUDE.md` | Symlink to `claude/CLAUDE.md` |
+| MCP servers | User scope in `~/.claude.json` | `claude mcp add-json --scope user` |
+| <Tool icon="plannotator.png">Plannotator</Tool> | Plugin, plus the `plannotator` binary | Plugin marketplace, binary installer |
+| <Tool icon="langfuse.svg">Langfuse tracing</Tool> | Plugin | Plugin marketplace, configured from `.env` |
+
+## What Cardea leaves alone
+
+- `~/.claude/settings.json`: your hooks, permissions and preferences.
+- Your own skills in `~/.claude/skills/` and any other plugins.
+- MCP servers with names Cardea does not use.
+
+## MCP servers
+
+Registered at user scope, so every project gets them. Each run removes and re-adds them,
+which keeps them in line with the script.
+
+| Name | What it does | Command |
+|---|---|---|
+| <Tool icon="serena.png">`serena`</Tool> | Understands code by symbol, not by text | `uvx --from git+…/serena@v2.1.0 serena start-mcp-server --context claude-code --project-from-cwd` |
+| <Tool icon="xcode.svg" mono>`xcodebuild`</Tool> | Builds, tests and runs iOS apps | `npx -y xcodebuildmcp@2.7.0 mcp` |
+| <Tool icon="swift.svg" mono>`swiftlens`</Tool> | Swift symbol lookups | `uvx swiftlens@0.2.14` |
+| <Tool icon="xcode.svg" mono>`xcode`</Tool> | Apple's bridge into a running Xcode | `xcrun mcpbridge` |
+| <Tool icon="container-use.png">`container-use`</Tool> | One container and git branch per agent | `container-use stdio` |
+| <Tool icon="basic-memory.png">`basic-memory`</Tool> | Durable notes on the NAS | HTTP, the URL from `.env` |
+
+Values come from `.env` when the script runs. After changing `.env`, run the script again.
+
+The Xcode bridge only connects while Xcode is open, so Claude Code reports it as failed the
+rest of the time. That is expected.
+
+## Plugins
+
+**Plannotator** opens plans in a review UI before Claude acts on them. The plugin only adds
+hooks; those hooks call the `plannotator` binary, which the script installs on its own at a
+pinned version.
+
+**Langfuse** sends each turn to Langfuse after it finishes: your prompt, Claude's reply,
+every tool call, and timing, grouped by session. The script always points it at the NAS, even
+before there are keys, so it never falls back to Langfuse's hosted service. The secret key is
+passed on standard input, kept out of the process list, and stored in the macOS keychain.
+
+## Your subscription, not an API key
+
+Claude Code uses your Claude subscription login. If `ANTHROPIC_API_KEY` is set in your shell,
+Claude Code uses that instead and bills the API. `./install.sh --check` warns when it is set.

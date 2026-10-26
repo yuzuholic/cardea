@@ -1,0 +1,2 @@
+#!/bin/sh
+echo "plannotator $*" >> "$FAKE_LOG"

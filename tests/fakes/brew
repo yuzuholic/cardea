@@ -1,0 +1,12 @@
+#!/bin/sh
+# fake brew: logs args and, like a real child process might, reads stdin
+echo "brew $*" >> "$FAKE_LOG"
+# EAT_STDIN reproduces a child swallowing the rest of a piped script. FAKE_GUM makes the
+# bundle "install" gum into FAKE_GUM_DIR, the way a fresh mac gets it mid-run.
+case "$1" in
+  bundle)
+    [ -z "${EAT_STDIN:-}" ] || cat >/dev/null
+    [ -z "${FAKE_GUM:-}" ] || ln -sf "$FAKE_GUM" "$FAKE_GUM_DIR/gum"
+    ;;
+esac
+exit 0

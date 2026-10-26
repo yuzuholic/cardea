@@ -1,11 +1,9 @@
-tap "anomalyco/tap"
 tap "dagger/tap"
 
+cask "claude-code@latest"
 brew "herdr"
-brew "anomalyco/tap/opencode"
-brew "dagger/tap/container-use"
+cask "dagger/tap/container-use"
 brew "xcode-build-server"
 brew "uv"
 brew "node"
-
-cask "obsidian"
+brew "gum"

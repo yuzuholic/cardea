@@ -8,14 +8,18 @@
 # safe to run repeatedly. existing config is backed up, not overwritten.
 set -eu
 
-REPO_URL="https://github.com/angelocarasig/cardea.git"
+# under curl | sh the script arrives on stdin, and anything that reads stdin (brew)
+# would eat the rest of it. a brace group is parsed whole before any of it runs.
+{
+REPO_URL="https://github.com/yuzuholic/cardea.git"
 REPO_DIR="${CARDEA_HOME:-$HOME/Repositories/cardea}"
-CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 
 # --- ui --------------------------------------------------------------------
 # colour only on a real terminal, and never when NO_COLOR is set.
+FANCY=
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+  FANCY=1
   B=$(printf '\033[1m');  D=$(printf '\033[2m');  R=$(printf '\033[0m')
   GRN=$(printf '\033[32m'); YEL=$(printf '\033[33m')
   RED=$(printf '\033[31m'); CYN=$(printf '\033[36m')
@@ -23,18 +27,60 @@ else
   B=''; D=''; R=''; GRN=''; YEL=''; RED=''; CYN=''
 fi
 
+# gum draws the ui when it is installed and there is a terminal to draw on. the printf
+# lines are the fallback, and the only ui on a fresh mac until the Brewfile installs gum.
+# checked on every call, so the run switches over as soon as gum appears.
+has_gum() {
+  [ -n "$FANCY" ] && [ "${TERM:-dumb}" != dumb ] && command -v gum >/dev/null 2>&1
+}
+# cardea's palette (eva unit-01). gum drops to 256 colours where truecolor is missing.
+AMETHYST='#995CD0'; PLUMP='#5549B7'; INCHWORM='#8EDF5F'; MANDARIN='#EC7744'
+# for $(...): gum leaves colour out when its output is not a terminal. callers put -- before
+# the text (it may start with a dash), and stdin is closed because gum style reads it when
+# the text is empty, and under curl | sh stdin is the rest of this script.
+paint() { CLICOLOR_FORCE=1 gum style "$@" < /dev/null; }
+
 banner() {
+  if has_gum; then
+    gum style --border rounded --border-foreground "$PLUMP" --padding '0 2' --margin '1 2' -- \
+      "$(paint --bold --foreground "$INCHWORM" -- Cardea)  $(paint --faint -- '·  the hinge the gate swings on')"
+    return 0
+  fi
   printf '\n%s  ╭────────────────────────────────────────────╮%s\n' "$CYN" "$R"
-  printf '%s  │%s  %scardea%s  %s·  the hinge the gate swings on%s   %s│%s\n' \
+  printf '%s  │%s  %sCardea%s  %s·  the hinge the gate swings on%s   %s│%s\n' \
     "$CYN" "$R" "$B" "$R" "$D" "$R" "$CYN" "$R"
   printf '%s  ╰────────────────────────────────────────────╯%s\n\n' "$CYN" "$R"
 }
-step() { printf '\n%s▸ %s%s\n' "$B" "$1" "$R"; }
-ok()   { printf '  %s✓%s %s\n' "$GRN" "$R" "$1"; }
-info() { printf '  %s·%s %s\n' "$D" "$R" "$1"; }
-warn() { printf '  %s!%s %s\n' "$YEL" "$R" "$1"; }
-bad()  { printf '  %s✗%s %s\n' "$RED" "$R" "$1"; }
+step() {
+  if has_gum; then printf '\n%s %s\n' "$(paint --foreground "$AMETHYST" -- ▸)" "$(paint --bold -- "$1")"; return 0; fi
+  printf '\n%s▸ %s%s\n' "$B" "$1" "$R"
+}
+# mark <gum colour> <glyph> <plain colour> <text>
+mark() {
+  if has_gum; then printf '  %s %s\n' "$(paint --foreground "$1" -- "$2")" "$4"; return 0; fi
+  printf '  %s%s%s %s\n' "$3" "$2" "$R" "$4"
+}
+ok()   { mark "$INCHWORM" '✓' "$GRN" "$1"; }
+info() {
+  if has_gum; then printf '  %s\n' "$(paint --faint -- "· $1")"; return 0; fi
+  printf '  %s·%s %s\n' "$D" "$R" "$1"
+}
+warn() { mark "$MANDARIN" '!' "$YEL" "$1"; }
+bad()  { mark 1 '✗' "$RED" "$1"; }
 die()  { printf '\n%scardea:%s %s\n' "$RED" "$R" "$*" >&2; exit 1; }
+
+# spin <title> <command...>: a spinner while it runs, its output shown only if it fails.
+# returns the command's own exit status either way. gum hands its stdin to the command,
+# so it gets none: under curl | sh stdin is the script, and the terminal would leave
+# anything that reads it waiting on the keyboard behind the spinner.
+spin() {
+  s_title="$1"; shift
+  if has_gum; then
+    gum spin --spinner dot --spinner.foreground "$INCHWORM" --title " $s_title" --show-error -- "$@" < /dev/null
+  else
+    info "$s_title"; "$@"
+  fi
+}
 
 # --- args ------------------------------------------------------------------
 PROMPT=1; CHECK_ONLY=
@@ -57,11 +103,12 @@ banner
 
 # --- locate the repo -------------------------------------------------------
 SELF_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd || true)"
-if [ -n "$SELF_DIR" ] && [ -f "$SELF_DIR/opencode/opencode.json" ]; then
+if [ -n "$SELF_DIR" ] && [ -f "$SELF_DIR/claude/CLAUDE.md" ]; then
   REPO_DIR="$SELF_DIR"
 elif [ -d "$REPO_DIR/.git" ]; then
   step "repo"; info "updating $REPO_DIR"
-  git -C "$REPO_DIR" pull --ff-only
+  # local edits make the pull refuse; install from what is on disk rather than stop.
+  git -C "$REPO_DIR" pull --ff-only || warn "could not update — using the local copy as it is"
 else
   step "repo"; info "cloning into $REPO_DIR"
   mkdir -p "$(dirname "$REPO_DIR")"
@@ -69,6 +116,8 @@ else
 fi
 cd "$REPO_DIR"
 ENV_FILE="$REPO_DIR/.env"
+# the user-scope MCP servers cardea owns; anything else in claude code is left alone.
+MCP_NAMES='serena|container-use|xcodebuild|swiftlens|xcode|basic-memory'
 
 # --- probes ----------------------------------------------------------------
 # any http status at all means something answered. an MCP endpoint may well reply
@@ -137,9 +186,11 @@ probe_tool() {
 
 run_checks() {
   step "tools"
-  for t in brew git docker opencode herdr ruler uv uvx container-use xcode-build-server; do
+  for t in brew git docker claude herdr uv uvx container-use xcode-build-server plannotator; do
     probe_tool "$t"
   done
+  # an exported key makes claude code bill the api instead of using the subscription login.
+  [ -n "${ANTHROPIC_API_KEY:-}" ] && warn "ANTHROPIC_API_KEY is set — claude code will use it instead of your subscription"
   if [ -d /Applications/Xcode.app ]; then
     ok "Xcode — $(/usr/bin/defaults read /Applications/Xcode.app/Contents/Info CFBundleShortVersionString 2>/dev/null || echo 'version unknown')"
   else
@@ -154,6 +205,12 @@ run_checks() {
   [ -f "$ENV_FILE" ] && { set -a; . "$ENV_FILE"; set +a; }
   probe_mcp      "${BASIC_MEMORY_URL:-}" "basic memory"
   probe_langfuse "${LANGFUSE_HOST:-}"    "langfuse"
+
+  if command -v claude >/dev/null 2>&1; then
+    step "claude code mcp servers"
+    # claude mcp list health-checks every server; show only the ones cardea registers.
+    claude mcp list 2>/dev/null | grep -E "^($MCP_NAMES):" | sed 's/^/  /' || warn "none registered yet"
+  fi
 }
 
 if [ -n "$CHECK_ONLY" ]; then
@@ -165,8 +222,16 @@ fi
 # --- brew ------------------------------------------------------------------
 step "packages"
 if command -v brew >/dev/null 2>&1; then
-  brew bundle --file="$REPO_DIR/Brewfile" 2>&1 | sed 's/^/  /'
-  ok "Brewfile applied"
+  # homebrew 7 refuses third-party taps until they are trusted.
+  if brew trust --help >/dev/null 2>&1; then
+    sed -n 's/^tap "\(.*\)"/\1/p' "$REPO_DIR/Brewfile" | xargs brew trust --tap
+  fi
+  # not piped: a pipe would report sed's exit status, not brew's.
+  if spin "applying the Brewfile (can take a few minutes)" brew bundle --file="$REPO_DIR/Brewfile"; then
+    ok "Brewfile applied"
+  else
+    bad "brew bundle failed — see above; the checks at the end show what is missing"
+  fi
 else
   warn "homebrew not found — skipping Brewfile, then rerun this script"
 fi
@@ -183,18 +248,44 @@ elif [ -z "$PROMPT" ]; then
   [ -n "${NOTTY:-}" ] && info "no terminal available, so nothing was asked"
 fi
 
+# gum input reads keys from stdin, which is the script itself under curl | sh, so it is
+# pointed at the terminal. it ignores ctrl-d, so esc stands in for it there.
+# gum_read <placeholder> <label> [flags]: sets reply, and g_rc to 0 (enter), 1 (esc), or
+# anything else when gum could not draw and the caller should fall back to a plain read.
+gum_read() {
+  g_ph="$1"; g_label="$2"; shift 2
+  g_rc=0
+  reply=$(gum input "$@" --prompt "  ${g_label}› " --prompt.foreground "$AMETHYST" \
+    --cursor.foreground "$INCHWORM" --placeholder "$g_ph" --no-show-help < /dev/tty 2>/dev/tty) || g_rc=$?
+  # ctrl-c in gum is a keypress, not a signal; stop the run as a plain read would.
+  [ "$g_rc" -ne 130 ] || { printf '\n' > /dev/tty; exit 130; }
+  return 0
+}
+
+# gum clears its prompt on enter, so leave a line saying what was chosen.
+chosen() { printf '  %s %s\n' "$(paint --bold -- "$1")" "$(paint --faint -- "$2")" > /dev/tty; }
+
 ask() {
   var="$1"; label="$2"; default="$3"
   eval "current=\${$var:-}"
   [ -n "$current" ] && default="$current"
   if [ -z "$PROMPT" ]; then eval "$var=\"\$default\""; return; fi
-  if [ -n "$default" ]; then
-    printf '  %s%s%s %s[%s]%s ' "$B" "$label" "$R" "$D" "$default" "$R" > /dev/tty
-  else
-    printf '  %s%s%s %s(optional)%s ' "$B" "$label" "$R" "$D" "$R" > /dev/tty
+  reply=''; ASK_EOF=; g_rc=2
+  if has_gum; then
+    gum_read "${default:-optional}" "$label"
+    [ "$g_rc" -ne 1 ] || ASK_EOF=1
   fi
-  reply=''; read -r reply < /dev/tty || true
+  if [ "$g_rc" -gt 1 ]; then
+    if [ -n "$default" ]; then
+      printf '  %s%s%s %s[%s]%s ' "$B" "$label" "$R" "$D" "$default" "$R" > /dev/tty
+    else
+      printf '  %s%s%s %s(optional)%s ' "$B" "$label" "$R" "$D" "$R" > /dev/tty
+    fi
+    # eof (ctrl-d, or a closed tty) is noted so retry loops can stop instead of spinning.
+    read -r reply < /dev/tty || ASK_EOF=1
+  fi
   [ -n "$reply" ] || reply="$default"
+  [ "$g_rc" -gt 1 ] || chosen "$label" "${reply:-not set}"
   eval "$var=\"\$reply\""
 }
 
@@ -202,15 +293,27 @@ ask_secret() {
   var="$1"; label="$2"
   eval "current=\${$var:-}"
   if [ -z "$PROMPT" ]; then eval "$var=\"\$current\""; return; fi
-  stty -echo < /dev/tty 2>/dev/null || true
-  if [ -n "$current" ]; then
-    printf '  %s%s%s %s[keep existing]%s ' "$B" "$label" "$R" "$D" "$R" > /dev/tty
-  else
-    printf '  %s%s%s %s(hidden, optional)%s ' "$B" "$label" "$R" "$D" "$R" > /dev/tty
+  reply=''; g_rc=2
+  if has_gum; then
+    if [ -n "$current" ]; then s_ph='keep existing'; else s_ph='hidden, optional'; fi
+    gum_read "$s_ph" "$label" --password
+    # esc keeps what was there, like enter on an empty field
+    [ "$g_rc" -ne 1 ] || reply=''
   fi
-  reply=''; read -r reply < /dev/tty || true
-  stty echo < /dev/tty 2>/dev/null || true
-  printf '\n' > /dev/tty
+  if [ "$g_rc" -gt 1 ]; then
+    stty -echo < /dev/tty 2>/dev/null || true
+    if [ -n "$current" ]; then
+      printf '  %s%s%s %s[keep existing]%s ' "$B" "$label" "$R" "$D" "$R" > /dev/tty
+    else
+      printf '  %s%s%s %s(hidden, optional)%s ' "$B" "$label" "$R" "$D" "$R" > /dev/tty
+    fi
+    read -r reply < /dev/tty || true
+    stty echo < /dev/tty 2>/dev/null || true
+    printf '\n' > /dev/tty
+  else
+    if [ -n "$reply" ]; then s_note='set'; elif [ -n "$current" ]; then s_note='kept'; else s_note='not set'; fi
+    chosen "$label" "$s_note"
+  fi
   [ -n "$reply" ] || reply="$current"
   eval "$var=\"\$reply\""
 }
@@ -218,33 +321,52 @@ ask_secret() {
 # ask, then actually talk to the thing. a wrong url is cheapest to fix right now,
 # while you are still looking at it — not at the end of the run.
 ask_url() {
-  u_var="$1"; u_label="$2"; u_default="$3"; u_prober="$4"; u_shown="$2"
+  u_var="$1"; u_label="$2"; u_default="$3"; u_prober="$4"; u_shown="$2"; u_fill="$3"
   u_prev=''
   while :; do
     ask "$u_var" "$u_label" "$u_default"
     eval "u_value=\${$u_var:-}"
-    [ -n "$u_value" ] || return
-    [ -n "$PROMPT" ] || return
+    # skip only means something after a failed test: keep the last url, untested.
+    if { [ "$u_value" = skip ] || [ -n "${ASK_EOF:-}" ]; } && [ -n "$u_prev" ]; then
+      eval "$u_var=\$u_prev"
+      warn "keeping $u_prev untested — ./install.sh --check once it is up"
+      return 0
+    fi
+    [ -n "$u_value" ] || return 0
+    # a bare host or host:port gets the original default's scheme, port and path filled in.
+    # a full url with a scheme is taken exactly as typed.
+    case "$u_value" in
+      *://*) ;;
+      *)
+        u_value="${u_value%/}"; u_host="${u_value%%/*}"
+        case "$u_host" in
+          *:*) ;;
+          *) u_host="$u_host$(printf '%s' "$u_fill" | sed -n 's|^[a-z]*://[^/:]*\(:[0-9]*\).*|\1|p')" ;;
+        esac
+        case "$u_value" in
+          */*) u_path="/${u_value#*/}" ;;
+          *)   u_path=$(printf '%s' "$u_fill" | sed -n 's|^[a-z]*://[^/]*||p') ;;
+        esac
+        u_value="${u_fill%%://*}://$u_host$u_path" ;;
+    esac
+    eval "$u_var=\$u_value"
+    [ -n "$PROMPT" ] || return 0
     info "testing $u_value"
     "$u_prober" "$u_value" "$(printf '%s' "$u_shown" | sed 's/ *$//')"
-    [ -n "$REACHED" ] && return
-    if [ "$u_value" = "$u_prev" ]; then
-      warn "keeping it anyway — you can fix it in .env later"
-      return
-    fi
+    [ -n "$REACHED" ] && return 0
     u_prev="$u_value"; u_default="$u_value"; u_label="$u_shown"
-    info "enter keeps it, or type a different url"
+    if has_gum; then u_skip='skip (or esc)'; else u_skip='skip'; fi
+    info "enter retries, type a different url, or $u_skip to keep it untested"
   done
 }
 
 if [ -n "$PROMPT" ]; then printf '\n'; fi
-ask_url BASIC_MEMORY_URL "basic memory MCP url " "http://nas.local:8766/mcp" probe_mcp
-ask_url LANGFUSE_HOST    "langfuse url         " "http://nas.local:3000"     probe_langfuse
-ask GRAPHIFY_ROOT    "graphify root        " "/mnt/main/docker/lab/kb"
+ask_url BASIC_MEMORY_URL "basic memory MCP url " "http://truenas.local:8766/mcp" probe_mcp
+# everything runs on the one NAS, so offer whatever host basic memory was given.
+NAS_BASE=$(printf '%s' "$BASIC_MEMORY_URL" | sed -n 's|^\([a-z]*://[^/:]*\).*|\1|p')
+ask_url LANGFUSE_HOST    "langfuse url         " "${NAS_BASE:-http://truenas.local}:3000" probe_langfuse
 ask_secret LANGFUSE_PUBLIC_KEY "langfuse public key  "
 ask_secret LANGFUSE_SECRET_KEY "langfuse secret key  "
-ask_secret ANTHROPIC_API_KEY   "anthropic api key    "
-ask_secret OPENAI_API_KEY      "openai api key       "
 
 # write atomically, then lock it down — this file holds keys.
 TMP_ENV="$ENV_FILE.$$"
@@ -255,12 +377,7 @@ TMP_ENV="$ENV_FILE.$$"
   printf '# --- langfuse (NAS) ---\n'
   printf 'LANGFUSE_HOST=%s\n'          "$LANGFUSE_HOST"
   printf 'LANGFUSE_PUBLIC_KEY=%s\n'    "$LANGFUSE_PUBLIC_KEY"
-  printf 'LANGFUSE_SECRET_KEY=%s\n\n'  "$LANGFUSE_SECRET_KEY"
-  printf '# --- graphify ---\n'
-  printf 'GRAPHIFY_ROOT=%s\n\n' "$GRAPHIFY_ROOT"
-  printf '# --- models ---\n'
-  printf 'ANTHROPIC_API_KEY=%s\n' "$ANTHROPIC_API_KEY"
-  printf 'OPENAI_API_KEY=%s\n'    "$OPENAI_API_KEY"
+  printf 'LANGFUSE_SECRET_KEY=%s\n'    "$LANGFUSE_SECRET_KEY"
 } > "$TMP_ENV"
 mv "$TMP_ENV" "$ENV_FILE"
 chmod 600 "$ENV_FILE"
@@ -284,42 +401,123 @@ link() {
   ok "${dest#"$HOME"/}"
 }
 
-# per-file, not whole-directory: opencode keeps its own state in ~/.config/opencode
-link "$REPO_DIR/opencode/opencode.json" "$CONFIG_HOME/opencode/opencode.json"
-link "$REPO_DIR/opencode/AGENTS.md"     "$CONFIG_HOME/opencode/AGENTS.md"
-# ruler distributes rules only; AGENTS.md has one source of truth
-link "$REPO_DIR/ruler/ruler.toml"       "$CONFIG_HOME/ruler/ruler.toml"
-link "$REPO_DIR/opencode/AGENTS.md"     "$CONFIG_HOME/ruler/AGENTS.md"
-link "$ENV_FILE"                        "$CONFIG_HOME/cardea/env"
+# per-file, not whole-directory: claude code keeps sessions, plugins and settings in ~/.claude
+link "$REPO_DIR/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
 
-# --- shell wiring ----------------------------------------------------------
-# opencode resolves {env:VAR} from the shell, so the env file must be exported.
-SHELL_LINE='[ -f "$HOME/.config/cardea/env" ] && set -a && . "$HOME/.config/cardea/env" && set +a'
-RC="$HOME/.zshrc"
-if [ -f "$RC" ] && grep -qF 'cardea/env' "$RC"; then
-  ok "~/.zshrc already sources the env"
+# --- claude code -----------------------------------------------------------
+step "claude code"
+# installed by the Brewfile (claude-code@latest). a native install in ~/.local/bin would
+# shadow it on PATH and update itself out of step, so flag one if it is there.
+[ -x "$HOME/.local/bin/claude" ] && warn "a native claude install in ~/.local/bin shadows homebrew's — remove it"
+command -v claude >/dev/null 2>&1 || die "claude code is not installed — the Brewfile step should have done it"
+ok "claude $(claude --version 2>/dev/null | cut -d' ' -f1)"
+
+# user scope, so every project gets them. values are baked in from .env at install time;
+# rerun this script after changing .env. remove-then-add keeps it idempotent.
+mcp() {
+  claude mcp remove -s user "$1" >/dev/null 2>&1 || true
+  if claude mcp add-json -s user "$1" "$2" >/dev/null; then ok "mcp: $1"; else bad "mcp: $1 — could not register"; fi
+}
+mcp serena        '{"type":"stdio","command":"uvx","args":["--from","git+https://github.com/oraios/serena@v2.1.0","serena","start-mcp-server","--context","claude-code","--project-from-cwd"]}'
+mcp container-use '{"type":"stdio","command":"container-use","args":["stdio"]}'
+mcp xcodebuild    '{"type":"stdio","command":"npx","args":["-y","xcodebuildmcp@2.7.0","mcp"],"env":{"XCODEBUILDMCP_SENTRY_DISABLED":"true"}}'
+mcp swiftlens     '{"type":"stdio","command":"uvx","args":["swiftlens@0.2.14"]}'
+# a bare `xcrun mcpbridge` is the bridge; it only connects while xcode is running.
+mcp xcode         '{"type":"stdio","command":"xcrun","args":["mcpbridge"]}'
+if [ -n "$BASIC_MEMORY_URL" ]; then
+  mcp basic-memory "{\"type\":\"http\",\"url\":\"$BASIC_MEMORY_URL\"}"
 else
-  printf '\n# cardea\n%s\n' "$SHELL_LINE" >> "$RC"
-  ok "added env sourcing to ~/.zshrc"
+  claude mcp remove -s user basic-memory >/dev/null 2>&1 || true
+  info "mcp: basic-memory — no url in .env, skipped"
 fi
+
+plugin() {
+  id="$1"; p_src="$2"
+  if claude plugin list --json 2>/dev/null | grep -q "\"id\": \"$id\""; then
+    # installed but switched off still counts as missing from the setup.
+    claude plugin enable "$id" >/dev/null 2>&1 || true
+    ok "plugin: $id"; return 0
+  fi
+  if spin "installing plugin $id" claude plugin install "${id%@*}" --marketplace "$p_src" -y >/dev/null; then ok "plugin: $id"; else bad "plugin: $id — install failed"; fi
+}
+
+# plannotator's plugin only wires hooks; they call the plannotator binary, installed bare.
+if ! command -v plannotator >/dev/null 2>&1; then
+  spin "installing plannotator v0.28.31 (binary only)" sh -c \
+    'curl -fsSL https://plannotator.ai/install.sh | bash -s -- --version v0.28.31 --minimal --non-interactive' \
+    || warn "plannotator binary failed to install"
+fi
+plugin plannotator@plannotator backnotprop/plannotator
+
+plugin langfuse-observability@langfuse-observability langfuse/Claude-Observability-Plugin
+# point it at the NAS even without keys, so it never falls back to langfuse's own cloud.
+# stdin keeps the secret out of the process list.
+if [ -n "$LANGFUSE_HOST" ]; then
+  {
+    printf '{"LANGFUSE_BASE_URL":"%s"' "$LANGFUSE_HOST"
+    [ -n "$LANGFUSE_PUBLIC_KEY" ] && printf ',"LANGFUSE_PUBLIC_KEY":"%s"' "$LANGFUSE_PUBLIC_KEY"
+    [ -n "$LANGFUSE_SECRET_KEY" ] && printf ',"LANGFUSE_SECRET_KEY":"%s"' "$LANGFUSE_SECRET_KEY"
+    printf '}'
+  } | claude plugin configure langfuse-observability@langfuse-observability --values-stdin >/dev/null \
+    && ok "langfuse plugin → $LANGFUSE_HOST" || warn "langfuse plugin configure failed — run /plugin configure in claude"
+  [ -n "$LANGFUSE_PUBLIC_KEY" ] || info "no langfuse keys yet — tracing stays off until you add them and rerun"
+fi
+
+# cardea's own skills and agents. installed from this checkout, which claude code reads in
+# place, so edits here show up at the next session without reinstalling.
+plugin cardea@cardea "$REPO_DIR"
+
+plugin superpowers@superpowers-marketplace obra/superpowers-marketplace
+plugin ponytail@ponytail DietrichGebert/ponytail
+plugin apple-skills@apple-skills Prisma-Labs-Dev/apple-skills
+plugin cloudflare@cloudflare cloudflare/skills
+plugin humanizer@humanizer blader/humanizer
 
 # --- herdr -----------------------------------------------------------------
 if command -v herdr >/dev/null 2>&1; then
   step "herdr"
-  herdr integration install opencode 2>&1 | sed 's/^/  /' || warn "herdr integration failed — run it by hand"
+  herdr integration install claude || warn "herdr integration failed — run it by hand"
+fi
+
+# --- vendored skills -------------------------------------------------------
+# herdr and graphify ship their own skills; generate them from the installed versions.
+step "skills"
+if command -v uv >/dev/null 2>&1; then
+  spin "installing graphify 0.9.88" uv tool install graphifyy==0.9.88 >/dev/null \
+    || warn "graphify failed to install"
+fi
+if sh "$REPO_DIR/scripts/vendor-skills.sh" "$HOME/.claude/skills" >/dev/null; then
+  ok "herdr and graphify skills"
+else
+  warn "a vendored skill could not be generated — run scripts/vendor-skills.sh to see why"
 fi
 
 run_checks
 
 # --- next steps ------------------------------------------------------------
-printf '\n%s▸ next%s\n' "$B" "$R"
-cat <<EOF
-  1. exec \$SHELL -l                      load the env into this shell
-  2. opencode auth login                 pick a model provider (interactive, can't be scripted)
-  3. per iOS project:                    xcode-build-server config -project X.xcodeproj -scheme X
-  4. on the NAS:                         docker compose up -d in nas/lab
-                                         (see nas/README.md)
+if has_gum; then
+  gum style --border rounded --border-foreground "$AMETHYST" --padding '1 2' --margin '1 2' -- \
+    "$(paint --bold --foreground "$INCHWORM" -- 'Next')
+
+1. $(paint --bold -- 'claude auth login')
+   sign in with your claude subscription (interactive)
+2. per iOS project
+   $(paint --bold -- 'xcode-build-server config -project X.xcodeproj -scheme X')
+3. on the NAS, in /mnt/main/docker/lab
+   $(paint --bold -- 'sudo docker compose up -d')
+   $(paint --faint -- 'https://yuzuholic.github.io/cardea/docs/nas')
+
+$(paint --faint -- 're-run anytime. ./install.sh --check probes without changing anything.')"
+else
+  printf '\n%s▸ next%s\n' "$B" "$R"
+  cat <<EOF
+  1. claude auth login                   sign in with your claude subscription (interactive)
+  2. per iOS project:                    xcode-build-server config -project X.xcodeproj -scheme X
+  3. on the NAS:                         sudo docker compose up -d in /mnt/main/docker/lab
+                                         (see https://yuzuholic.github.io/cardea/docs/nas)
 
   re-run anytime. ${D}./install.sh --check${R} probes without changing anything.
 
 EOF
+fi
+}

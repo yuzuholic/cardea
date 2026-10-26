@@ -1,0 +1,36 @@
+# expect install.exp <answer>...: runs install.sh on a terminal, sends one answer per
+# prompt, then the end key to every prompt after that: ctrl-d for the plain prompts, esc
+# for gum's (gum ignores ctrl-d). GUM=1 picks gum. CMD replaces `sh install.sh`.
+# exits with the command's status.
+#
+# a prompt is the plain one ("url [", "key (") or a fresh gum input: gum switches
+# bracketed paste on (\e[?2004h) once as it starts, then draws "label› ".
+set timeout 60
+set stty_init "columns 110 rows 40"
+set prompt {(url|key)( |\x1b\[[0-9;]*m)*[\[(]|\x1b\[\?2004h[^›]*›}
+# for gum, esc goes as its unambiguous CSI-u form: a bare \033 can be held back as the start
+# of an escape sequence, which under slow (emulated) runners left the prompt open for good.
+if {[info exists env(GUM)]} { set endkey "\033\[27u" } else { set endkey "\004" }
+if {[info exists env(CMD)]} { spawn sh -c $env(CMD) } else { spawn sh install.sh }
+foreach a $argv {
+  expect {
+    -re $prompt { send -- "$a\r" }
+    timeout { puts "\nTIMEOUT waiting for a prompt"; exit 99 }
+    eof { break }
+  }
+}
+# a prompt still up after a few seconds gets the key again: gum can miss a lone esc while
+# it waits to see whether more of an escape sequence follows. harmless, since every prompt
+# from here on gets the end key anyway.
+set resends 0
+catch {
+  expect {
+    -re $prompt { send $endkey; exp_continue }
+    -timeout 5 timeout {
+      if {[incr resends] > 6} { puts "\nTIMEOUT"; exit 99 }
+      send $endkey; exp_continue
+    }
+    eof {}
+  }
+}
+exit [lindex [wait] 3]

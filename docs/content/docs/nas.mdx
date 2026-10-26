@@ -1,0 +1,183 @@
+---
+title: NAS
+description: The services on TrueNAS, who can reach them, and how their secrets work.
+---
+
+The whole stack runs on TrueNAS as one service, `cardea`. Its image, `yuzuholic/cardea`, is a
+launcher: it carries the stack's compose file and a current Docker Compose, and starts each
+service from its official image, next to itself, on the NAS's own Docker. Stopping `cardea`
+stops the whole stack.
+
+On the NAS it lives at `/mnt/main/docker/lab`; over SMB it shows up as
+`/Volumes/docker/lab`. That folder holds three things: `compose.yml` (from `nas/` in the
+repo), which declares every setting the stack reads; `.env`, which holds their values; and
+`kb/` with the notes.
+
+```sh
+cd /mnt/main/docker/lab
+sudo docker compose up -d
+sudo docker compose logs -f cardea
+```
+
+`truenas_admin` is not in the docker group, so `docker` needs `sudo`. Put `sudo` on the
+`docker` call itself: `sudo cd` fails, because `cd` is built into the shell.
+
+<Callout type="warn" title="cardea controls Docker on the NAS">
+  To start the services, `cardea` talks to the NAS's Docker through its socket. Anything with
+  that access can do anything to the NAS, so only run a `cardea` image you built yourself.
+</Callout>
+
+## Changing the stack
+
+The services are defined in `nas/lab/docker-compose.yml`, which is built into the image.
+Change it there, then build and push the image. The NAS is x86 and the Mac is Arm, so build
+for both:
+
+```sh
+docker buildx build --platform linux/amd64,linux/arm64 -t yuzuholic/cardea:latest --push nas/
+```
+
+Watchtower on the NAS picks up a new `:latest` by itself, which briefly restarts the whole
+stack. To choose when an update lands, tag the image (for example `:0.1.0`) and set that tag
+in `compose.yml`.
+
+After changing `.env`, run `sudo docker compose up -d`. It sees the new values, recreates
+`cardea`, and `cardea` applies them to the stack. `restart` is not enough: it reuses the old
+container with the old values.
+
+The services keep the project name `lab`, so their containers and volumes keep their old
+`lab_` names. To use a different project name or notes folder, set `CARDEA_PROJECT` or
+`CARDEA_KB` on the `cardea` service.
+
+## Moving from the old stack
+
+The stack used to run straight from `docker-compose.yml` on the NAS. To switch, in
+`/mnt/main/docker/lab`:
+
+1. `sudo docker compose down` stops the old stack. Volumes are kept, so no data is lost.
+2. Move the old `docker-compose.yml` out of the folder.
+3. Add `compose.yml`, and `.env` filled in from `nas/.env.example`.
+4. `sudo docker compose up -d`, then `sudo docker compose logs -f cardea` to watch it start.
+
+## Who can reach what
+
+| Service | Port | Reachable from |
+|---|---|---|
+| Basic Memory | 8766 | LAN |
+| Obsidian | 3001 (HTTPS) | LAN |
+| Langfuse web | 3000 | LAN |
+| MinIO | 9090 | LAN |
+| ClickHouse, Postgres, Redis, Langfuse worker | — | The NAS itself only |
+
+Portainer lists ports like `5432:5432` without showing that they are bound to the NAS's own
+loopback address. They are not open to the network.
+
+**Basic Memory has no login at all.** Keep it on the LAN. Never route it through the
+Cloudflare tunnel without Cloudflare Access in front of it.
+
+**MinIO's 9090 has to stay on the LAN**, because your browser uploads Langfuse media straight
+to it. That is why the media addresses point at `truenas.local` and not `localhost`.
+
+Use `truenas.local` for the NAS everywhere. `nas.local` does not exist on this network.
+
+## Secrets
+
+They live in `.env` beside `compose.yml` on the NAS, never in the repo.
+`nas/.env.example` lists every one. Every secret is required: if one is missing,
+`sudo docker compose up` stops and names it, instead of quietly starting a service with an
+empty password.
+
+The Cloudflare tunnel is optional. It only starts when `CLOUDFLARE_TUNNEL_TOKEN` is set.
+
+Generate them as hex, not base64. The Postgres password ends up inside a web address, and
+base64's `+`, `/` and `=` would break it.
+
+```sh
+openssl rand -hex 24   # passwords and secrets
+openssl rand -hex 32   # ENCRYPTION_KEY
+```
+
+Values that have to match are filled in for you: the Postgres address uses
+`POSTGRES_PASSWORD`, and Langfuse's three storage keys use `MINIO_ROOT_PASSWORD`. Set them
+by hand only if you want them to differ.
+
+Changing `ENCRYPTION_KEY` once Langfuse holds data makes that data unreadable, so do it early
+or not at all.
+
+`NEXTAUTH_URL` must be the address you open Langfuse at in the browser, or signing in
+redirects you somewhere dead. It defaults to `http://truenas.local:3000`.
+
+## Langfuse
+
+Open `http://truenas.local:3000` and sign up; the first account becomes the admin. Then
+create an organisation and a project, and under **Settings → API Keys** create a key pair.
+The secret key is shown once.
+
+Once your account exists, turn off sign-ups: set `AUTH_DISABLE_SIGNUP=true` in the NAS
+`.env` and run `sudo docker compose up -d`.
+
+The first request after Langfuse starts can take around 30 seconds. After that it answers
+straight away.
+
+Next.js inside the container listens on whatever `HOSTNAME` says, and Docker sets that to the
+container's ID. The compose file forces `HOSTNAME: "0.0.0.0"`; without it, port 3000 never
+answers.
+
+## Basic Memory
+
+The notes are plain markdown in `kb/`, beside the compose file. The search index is SQLite,
+kept in the `basic_memory_data` volume instead, because SQLite on an SMB share corrupts. The
+index can be rebuilt from the markdown.
+
+`kb/` must be writable by uid 1000, or Basic Memory starts and then quietly stops serving:
+
+```sh
+sudo chown -R 1000:1000 kb
+```
+
+Register each project once:
+
+```sh
+sudo docker exec basic-memory basic-memory project create homelab /app/kb/homelab
+```
+
+## Obsidian
+
+The Obsidian desktop app runs on the NAS and streams to your browser at
+`https://truenas.local:3001`. It edits the files in `kb/` directly: the same plain markdown
+Basic Memory reads, so there is nothing to sync.
+
+Add a login to the NAS `.env` first. An empty password would mean no login at all, so
+without both values the stack refuses to start:
+
+```sh
+OBSIDIAN_USER=angelo
+OBSIDIAN_PASSWORD=   # openssl rand -hex 24
+```
+
+The first visit shows a certificate warning, because the certificate is self-signed. Accept
+it once per browser. Then open `/config/vaults/kb` as the vault; its `.obsidian/` settings
+come with it.
+
+<Callout type="warn" title="Treat the login as root access">
+  The web desktop includes a terminal with passwordless `sudo`. Anyone who gets past the
+  login is root in that container and can rewrite every note. Keep it on the LAN and never
+  route it through the tunnel.
+</Callout>
+
+It needs HTTPS because the browser features the stream uses only work over a secure
+connection. Plain HTTP on 3000 is left unpublished for that reason, which also keeps it clear
+of Langfuse's port 3000.
+
+## Backups
+
+None. Langfuse has no high availability either. What matters is the
+`langfuse_postgres_data` and `langfuse_clickhouse_data` volumes, plus `kb/`. The
+`obsidian_config` volume only holds app settings and can be recreated.
+
+## Pins
+
+Upstream Langfuse floats `langfuse:4`, `postgres:17` and `redis:7`, and ships MinIO with no
+tag. Here all four are exact. MinIO is pinned by digest, because Chainguard publishes no
+version tags on its free tier; if that digest stops pulling, look up
+`cgr.dev/chainguard/minio:latest` again and update it.

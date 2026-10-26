@@ -1,0 +1,5 @@
+#!/bin/sh
+echo "herdr $*" >> "$FAKE_LOG"
+# --skill prints the official skill; a stand-in is enough to prove it gets installed.
+[ "${1:-}" = --skill ] && printf -- '---\nname: herdr\ndescription: fake\n---\n'
+exit 0

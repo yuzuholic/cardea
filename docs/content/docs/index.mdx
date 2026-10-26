@@ -1,0 +1,65 @@
+---
+title: Overview
+description: One command installs my agentic coding setup.
+---
+
+Cardea was the Roman goddess of the door hinge. Forculus had the door, Limentinus the
+threshold, Cardea the thing that lets it swing. This repo is the hinge: one command sets up
+Claude Code on a Mac, wires it to its tools, and points it at the services running on the NAS.
+
+## Two ways in
+
+Cardea has two entry points, each with its own settings file.
+
+### The Mac: `install.sh`
+
+Installs Claude Code and everything around it. It asks for the Basic Memory and Langfuse
+addresses and the Langfuse keys (listed in `.env.example`) and keeps them in `.env`.
+
+```sh
+git clone https://github.com/yuzuholic/cardea.git ~/Repositories/cardea
+cd ~/Repositories/cardea
+./install.sh
+```
+
+Or, on a fresh machine:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/yuzuholic/cardea/main/install.sh | sh
+```
+
+### The NAS: `nas/compose.yml`
+
+Runs the services Claude Code talks to, self-hosted, as one service. Put `compose.yml`, a
+`.env` filled in from `nas/.env.example`, and `kb/` in one folder on the NAS, then:
+
+```sh
+sudo docker compose up -d
+```
+
+[NAS](/docs/nas) covers the secrets, ports and updates.
+
+<Callout title="Before you start">
+  Install Xcode 26.3 or later and keep it running. The Xcode bridge only connects while Xcode
+  is open, and Xcode cannot be installed by a script.
+</Callout>
+
+## What you get
+
+- **Claude Code**, signed in with your Claude subscription.
+- **Global rules** from `claude/CLAUDE.md`, linked into `~/.claude/`.
+- **Six MCP servers** registered for every project: Serena, XcodeBuildMCP, SwiftLens, the
+  Xcode bridge, container-use and Basic Memory.
+- **Two plugins**: Plannotator for reviewing plans, and Langfuse for tracing every session.
+- **The NAS services** those talk to: Basic Memory and Langfuse, started on the NAS by
+  `nas/compose.yml`.
+
+## Where to go next
+
+<Cards>
+  <Card title="Install" href="/docs/install" description="What the script does, step by step" />
+  <Card title="Claude Code" href="/docs/claude-code" description="What Cardea owns, and what it leaves alone" />
+  <Card title="Stack" href="/docs/stack" description="Every tool and its pinned version" />
+  <Card title="NAS" href="/docs/nas" description="Services, ports, secrets and backups" />
+  <Card title="Decisions" href="/docs/decisions" description="Why the stack looks like this" />
+</Cards>

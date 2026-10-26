@@ -1,0 +1,40 @@
+---
+title: Stack
+description: Every tool, what it is for, and the version it is pinned to.
+---
+
+Every version is pinned, so a reinstall gives the same result. Where a tool cannot be pinned,
+the table says so.
+
+| Area | Tool | Pin |
+|---|---|---|
+| Agent | <Tool icon="claude.svg" mono>Claude Code</Tool> | `claude-code@latest` cask, updated with `brew upgrade` |
+| Plan review | <Tool icon="plannotator.png">Plannotator</Tool> | `v0.28.31` binary; plugin follows its marketplace |
+| Observability | <Tool icon="langfuse.svg">Langfuse plugin</Tool> | marketplace (`1.2.1` at time of writing) |
+| Multiplexer | <Tool icon="herdr.svg">herdr</Tool> | brew, unpinned |
+| Code understanding | <Tool icon="serena.png">Serena</Tool> | `v2.1.0` (git tag, via uvx) |
+| iOS build and test | <Tool icon="xcode.svg" mono>XcodeBuildMCP</Tool> | `xcodebuildmcp@2.7.0` |
+| iOS symbols | <Tool icon="swift.svg" mono>SwiftLens</Tool> | `swiftlens@0.2.14` |
+| iOS bridge | <Tool icon="xcode.svg" mono>`xcrun mcpbridge`</Tool> | ships with Xcode 26.3+ |
+| iOS language server feed | <Tool icon="xcode.svg" mono>xcode-build-server</Tool> | brew, unpinned |
+| Isolation | <Tool icon="container-use.png">container-use</Tool> | `0.4.2` (brew cask) |
+| NAS launcher | <Tool icon="docker.svg" mono>`yuzuholic/cardea`</Tool> | built `FROM docker:29.9.0-cli` (Compose v5.6.0) |
+| Observability backend | <Tool icon="langfuse.svg">Langfuse</Tool> | `4.70.0` (NAS) |
+| Memory | <Tool icon="basic-memory.png">Basic Memory</Tool> | `0.24.1` (NAS) |
+| Notes | <Tool icon="obsidian.svg" mono>Obsidian, in the browser</Tool> | `lscr.io/linuxserver/obsidian:v1.14.4-ls148` (NAS) |
+
+Homebrew installs the current version of a formula. It cannot hold an exact one, so the brew
+rows move when their makers release.
+
+Claude Code comes from Homebrew's `claude-code@latest` cask, which follows Anthropic's
+newest release. The plain `claude-code` cask follows the slower stable channel. Don't also
+use Anthropic's native installer: it puts a second copy in `~/.local/bin`, which comes first
+on `PATH` and updates itself separately. The install script warns if it finds one.
+
+## Dropped
+
+OpenCode, Ruler, Beads and rulesync were dropped. [Decisions](/docs/decisions) says why.
+
+## Licences
+
+herdr and Basic Memory are AGPL-3.0. Personal use, no redistribution, so that is fine.

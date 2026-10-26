@@ -1,0 +1,67 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+      - run: npm install -g @anthropic-ai/claude-code@2.1.296
+      - run: sh tests/plugin.sh
+
+  vendor-skills:
+    # herdr comes from homebrew, which the macOS runners already have.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.3.0
+      - run: brew install herdr
+      # keep in step with the graphify pin in install.sh
+      - run: uv tool install graphifyy==0.9.88
+      - run: sh tests/vendor-skills.sh
+
+  install:
+    # ubuntu's sh is dash, which keeps install.sh honest about being POSIX sh.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: sudo apt-get update && sudo apt-get install -y expect
+      # keep in step with the Brewfile's gum (homebrew has 2.0.2)
+      - run: |
+          curl -fsSL -o gum.deb https://github.com/charmbracelet/gum/releases/download/v2.0.2/gum_2.0.2_amd64.deb
+          sudo dpkg -i gum.deb
+      - run: sh tests/install.sh
+
+  nas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: sh tests/nas.sh
+
+  docs:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+      - run: npm ci
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_BASE_PATH: /cardea

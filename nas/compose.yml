@@ -1,0 +1,42 @@
+# cardea, self-hosted: the whole lab stack as one service. put this file, a .env (from
+# .env.example) and kb/ in one folder on the NAS (/mnt/main/docker/lab), then
+# `sudo docker compose up -d`.
+name: cardea
+
+services:
+  cardea:
+    image: yuzuholic/cardea:latest
+    restart: unless-stopped
+    # long enough for the launcher to stop every service before docker kills it.
+    stop_grace_period: 2m
+
+    # everything the stack reads. required values stop `docker compose up` here, on the
+    # NAS, with the name of what is missing.
+    environment:
+      # langfuse
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://truenas.local:3000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?set NEXTAUTH_SECRET in .env}
+      SALT: ${SALT:?set SALT in .env}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY in .env}
+      AUTH_DISABLE_SIGNUP: ${AUTH_DISABLE_SIGNUP:-false}
+
+      # langfuse storage
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD in .env}
+      REDIS_AUTH: ${REDIS_AUTH:?set REDIS_AUTH in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
+
+      # obsidian
+      OBSIDIAN_USER: ${OBSIDIAN_USER:?set OBSIDIAN_USER in .env}
+      OBSIDIAN_PASSWORD: ${OBSIDIAN_PASSWORD:?set OBSIDIAN_PASSWORD in .env}
+
+      # optional: the cloudflare tunnel only starts when a token is set.
+      CLOUDFLARE_TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+
+    volumes:
+      # the launcher drives the host's docker engine; this is root on the NAS.
+      - /var/run/docker.sock:/var/run/docker.sock
+
+      # the notes. the launcher only reads where this folder is on the NAS, then mounts it
+      # into basic memory and obsidian itself.
+      - ./kb:/kb:ro

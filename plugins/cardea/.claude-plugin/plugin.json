@@ -1,0 +1,11 @@
+{
+  "name": "cardea",
+  "version": "0.1.0",
+  "description": "Skills and agents for the Cardea stack: iOS work, reviews, releases, and the self-hosted tools.",
+  "author": {
+    "name": "yuzuholic",
+    "url": "https://github.com/yuzuholic"
+  },
+  "repository": "https://github.com/yuzuholic/cardea",
+  "license": "MIT"
+}

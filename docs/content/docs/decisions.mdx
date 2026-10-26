@@ -1,0 +1,96 @@
+---
+title: Decisions
+description: Why the stack looks the way it does.
+---
+
+Every choice behind the stack, including the tools that were tried and dropped. Select a
+column heading to sort.
+
+<DecisionsTable
+  decisions={[
+    {
+      title: 'Claude Code as the agent',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>It fixed several open problems at once: Langfuse has a first-party plugin for it, Plannotator and herdr support it directly, existing skills keep working, and Ruler is no longer needed. The cost is model choice: Claude Code only runs Claude models.</>,
+    },
+    {
+      title: 'OpenCode',
+      area: 'Agent',
+      status: 'Replaced',
+      why: <>The Claude subscription only works officially inside Anthropic's own apps. OpenCode lost its subscription login in 2026, and the plugins that bring it back either break Anthropic's terms or depend on a community wrapper.</>,
+    },
+    {
+      title: 'No work and personal split',
+      area: 'Install',
+      status: 'Adopted',
+      why: <>Everything here is personal, and anything that varies belongs in the project, not the machine. The script takes no profile argument.</>,
+    },
+    {
+      title: 'One rules file',
+      area: 'Rules',
+      status: 'Adopted',
+      why: <><code>claude/CLAUDE.md</code> is the only global rules file, linked into <code>~/.claude/</code>. It holds rules that apply everywhere: how to communicate, how to work, the default stack. Rules for one project, such as an app's architecture or naming, go in that project's own <code>CLAUDE.md</code>.</>,
+    },
+    {
+      title: 'Link files, never folders',
+      area: 'Install',
+      status: 'Adopted',
+      why: <>Claude Code keeps sessions, plugin caches and its own settings in <code>~/.claude</code>. Linking the whole folder would put that state in the repo. Cardea links one file and registers the rest through Claude Code's own commands.</>,
+    },
+    {
+      title: "Langfuse's compose file comes from upstream",
+      area: 'NAS',
+      status: 'Adopted',
+      why: <>Langfuse v4 is six services and five volumes. It was copied from the official v4.70.0 file and trimmed, not written from memory, and every insecure default was removed.</>,
+    },
+    {
+      title: 'The NAS stack runs as one service',
+      area: 'NAS',
+      status: 'Adopted',
+      why: <>One <code>cardea</code> service starts and stops the whole stack. Its image is a launcher: it carries the compose file and a current Docker Compose, and starts each service from its official image beside itself, through the NAS's Docker socket. The socket gives it full control of the NAS, so only run an image you built.</>,
+    },
+    {
+      title: 'One all-in-one NAS image',
+      area: 'NAS',
+      status: 'Rejected',
+      why: <>Packing every service into one container is fragile, and publishing it would mean redistributing AGPL code, Redis-licensed code, Langfuse's enterprise code and Obsidian, which is proprietary.</>,
+    },
+    {
+      title: 'Docker-in-Docker',
+      area: 'NAS',
+      status: 'Rejected',
+      why: <>It needs privileged mode and keeps all the data inside one container.</>,
+    },
+    {
+      title: 'A published compose app',
+      area: 'NAS',
+      status: 'Rejected',
+      why: <>Running a compose file straight from a registry needs Docker Compose 2.34 or later, and the NAS has 2.32.3.</>,
+    },
+    {
+      title: 'LiteLLM proxy',
+      area: 'Agent',
+      status: 'Deferred',
+      why: <>Claude Code can send its subscription traffic through LiteLLM; this was tested. It would give one address for every model and spend tracking in one place, but nothing needs it until a second model provider joins in. It cannot put OpenCode, or any other tool, on the Claude subscription: it only passes on the login the client sends, and only Claude Code has one.</>,
+    },
+    {
+      title: 'Ruler',
+      area: 'Rules',
+      status: 'Removed',
+      why: <>It syncs rules across several agents. With one agent, a symlinked <code>CLAUDE.md</code> does the job.</>,
+    },
+    {
+      title: 'Beads',
+      area: 'Tools',
+      status: 'Rejected',
+      why: <>Too early.</>,
+    },
+    {
+      title: 'rulesync',
+      area: 'Rules',
+      status: 'Rejected',
+      why: <>Its releases are not stable yet.</>,
+    },
+  ]}
+/>

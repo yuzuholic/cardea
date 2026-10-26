@@ -1,0 +1,7 @@
+#!/bin/sh
+echo "graphify $*" >> "$FAKE_LOG"
+# `graphify install` writes its skill under CLAUDE_CONFIG_DIR, like the real one.
+if [ "${1:-}" = install ]; then
+  mkdir -p "$CLAUDE_CONFIG_DIR/skills/graphify"
+  printf -- '---\nname: graphify\ndescription: fake\n---\n' > "$CLAUDE_CONFIG_DIR/skills/graphify/SKILL.md"
+fi

@@ -1,0 +1,120 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/lib/default-colors.css';
+@import 'fumadocs-ui/css/preset.css';
+
+/* eva unit-01: dark purple #201d30 leads (dark background, light-mode text), amethyst
+   #995cd0 tints what is selected, green marks what is active or linked (inchworm #8edf5f
+   in dark, #3f6d4e in light, where inchworm washes out) and mandarin #ec7744 warns */
+@theme {
+  --color-fd-background: #f6f4fa;
+  --color-fd-foreground: #201d30;
+  --color-fd-muted: #ece8f4;
+  --color-fd-muted-foreground: #5e5873;
+  --color-fd-popover: #fbfafd;
+  --color-fd-popover-foreground: #201d30;
+  --color-fd-card: #efecf6;
+  --color-fd-card-foreground: #201d30;
+  --color-fd-border: rgb(115 79 154 / 0.25);
+  --color-fd-primary: #3f6d4e;
+  --color-fd-primary-foreground: #f6f4fa;
+  --color-fd-secondary: #ece8f4;
+  --color-fd-secondary-foreground: #201d30;
+  --color-fd-accent: rgb(153 92 208 / 0.15);
+  --color-fd-accent-foreground: #201d30;
+  --color-fd-ring: #995cd0;
+  --color-fd-warning: #ec7744;
+  --color-fd-success: #3f6d4e;
+}
+
+.dark {
+  --color-fd-background: #201d30;
+  --color-fd-foreground: #f5f4f8;
+  --color-fd-muted: #2e2a45;
+  --color-fd-muted-foreground: #bdb8cc;
+  --color-fd-popover: #2a2640;
+  --color-fd-popover-foreground: #f5f4f8;
+  --color-fd-card: #2a2640;
+  --color-fd-card-foreground: #f5f4f8;
+  --color-fd-border: rgb(255 255 255 / 0.1);
+  /* inchworm marks what is active or linked, like unit-01's trim on the purple */
+  --color-fd-primary: #8edf5f;
+  --color-fd-primary-foreground: #201d30;
+  --color-fd-secondary: #2a2740;
+  --color-fd-secondary-foreground: #f5f4f8;
+  --color-fd-accent: rgb(153 92 208 / 0.22);
+  --color-fd-accent-foreground: #f5f4f8;
+  --color-fd-ring: #8edf5f;
+  --color-fd-warning: #ec7744;
+  --color-fd-success: #8edf5f;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+html > body[data-scroll-locked] {
+  margin-right: 0px !important;
+  --removed-body-scroll-bar-size: 0px !important;
+}
+
+/* unit-01's trim colours, kept to the landing: green stars and hover, orange viewfinder.
+   light mode uses the palette's dark green, since inchworm washes out on white */
+:root {
+  --eva-green: #3f6d4e;
+  --eva-orange: #ec7744;
+}
+
+.dark {
+  --eva-green: #8edf5f;
+}
+
+@theme inline {
+  --color-eva-green: var(--eva-green);
+  --color-eva-orange: var(--eva-orange);
+}
+
+/* the banner draws in currentColor, so each group takes its colour from here */
+[data-banner] :is([data-stars], [data-edges], [data-lock]) {
+  color: var(--eva-green);
+}
+
+[data-banner] :is([data-corners], [data-coords]) {
+  color: var(--eva-orange);
+}
+
+/* ported from heuresis: faint dot grid behind the landing */
+:root {
+  --grid-dot: color-mix(in oklab, var(--color-fd-foreground) 12%, transparent);
+  --grid-size: 24px;
+}
+
+.dark {
+  --grid-dot: color-mix(in oklab, var(--color-fd-foreground) 10%, transparent);
+}
+
+/* without a mouse to aim the viewfinder, or with motion reduced, the title never gets
+   unblurred, so show it sharp from the start */
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  [data-banner] [data-title-text] {
+    filter: none;
+    opacity: 1;
+  }
+
+  [data-banner] [data-skeleton] {
+    opacity: 0;
+  }
+}
+
+/* below sm the banner shows the drawing 1:1 centred on x = 340, so its left edge is at
+   340 - 50vw and the title (x = 64) falls off it. slide the title 16px inside the edge */
+@media (max-width: 639px) {
+  [data-banner] [data-title-text] {
+    transform: translateX(max(0px, calc(292px - 50vw)));
+  }
+}
+
+.dot-grid {
+  background-color: var(--color-fd-background);
+  background-image: radial-gradient(var(--grid-dot) 1px, transparent 1.2px);
+  background-size: var(--grid-size) var(--grid-size);
+}

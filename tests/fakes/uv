@@ -1,0 +1,2 @@
+#!/bin/sh
+echo "uv $*" >> "$FAKE_LOG"

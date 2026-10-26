@@ -1,0 +1,71 @@
+---
+title: Install
+description: What install.sh does, and how to re-run it.
+---
+
+`install.sh` is safe to run as often as you like. Each run brings the machine back in line
+with the repo and finishes by checking that everything actually answers.
+
+| Flag | Effect |
+|---|---|
+| *(none)* | Ask for each value, showing the current one as the default. Enter keeps it. |
+| `--no-prompt` | Ask nothing; keep whatever `.env` already holds. For unattended runs. |
+| `--check` | Check tools and services, then exit. Changes nothing. |
+
+## What a run does
+
+1. **Packages.** Applies the `Brewfile`. Third-party taps are trusted first, because
+   Homebrew 7 refuses them otherwise. A failed package shows as a failure, not a tick.
+2. **Configuration.** Asks for the Basic Memory and Langfuse addresses and the Langfuse keys,
+   then writes them to `.env` (mode 600, never committed).
+3. **Rules.** Links `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`.
+4. **Claude Code.** Installed by the `Brewfile` as `claude-code@latest`. The script then
+   registers the MCP servers and plugins. See [Claude Code](/docs/claude-code).
+5. **herdr.** Installs herdr's Claude Code integration.
+6. **Checks.** Confirms each tool is installed, each NAS service answers, and each MCP server
+   connects.
+
+## Answering the prompts
+
+Type as little as you like. `192.168.0.214` becomes `http://192.168.0.214:8766/mcp` for
+Basic Memory, and Langfuse then defaults to the same machine on port 3000. A full address
+starting with `http://` is kept exactly as typed.
+
+Each address is tested the moment you enter it. If the test fails, the prompt asks again:
+
+- **Enter** tests the same address again.
+- **A new address** tests that one instead.
+- **`skip`** (or Ctrl-D) keeps the address untested and moves on. Use it when a service is
+  down on purpose; `./install.sh --check` tests it again later.
+
+Keys are typed hidden. Leaving the Langfuse keys blank is fine: tracing simply stays off
+until you add them and run the script again.
+
+The tests ask each service something it has to understand. Basic Memory must answer an MCP
+`initialize` with its own name and version, which also proves the transport is right.
+Langfuse must answer `200` on `/api/public/health`.
+
+## Nothing gets overwritten
+
+If a real file is already where a link should go, it is moved to `backup/<timestamp>/`
+first. That includes an existing `~/.claude/CLAUDE.md`.
+
+<Callout type="warn" title="Move project rules out first">
+  If `~/.claude/CLAUDE.md` currently holds rules for one project, move them into that
+  project's own `CLAUDE.md` before running the script. Otherwise they stop loading until you do.
+</Callout>
+
+## Piping from curl
+
+Prompts read from `/dev/tty`, not standard input, so `curl … | sh` can still ask questions.
+The whole script is wrapped so the shell reads all of it before running any of it; without
+that, Homebrew would swallow the rest of the script mid-run.
+
+## After installing
+
+```sh
+claude auth login        # sign in with your Claude subscription
+xcode-build-server config -project MyApp.xcodeproj -scheme MyApp   # once per iOS project
+```
+
+Serena reads the `buildServer.json` that second command writes.

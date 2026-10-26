@@ -1,32 +1,34 @@
-# lab stack — cloudflare tunnel + the cardea agent services.
+# lab stack — cloudflare tunnel + the cardea agent services. baked into the
+# yuzuholic/cardea launcher image; on the NAS, run it through ../compose.yml.
 #
-# every image is pinned. langfuse's own compose floats several tags (langfuse:4,
-# postgres:17, redis:7) and ships minio untagged; those are pinned to exact versions
-# here, and minio by digest because chainguard publishes no version tags for free.
+# every image is pinned to an exact version; minio by digest, since chainguard's free
+# tier publishes no version tags.
 #
-# only langfuse-web (3000), minio (9090) and basic-memory (8766) are reachable from the
-# LAN. postgres, clickhouse and redis bind to 127.0.0.1 and are not.
-#
-# secrets live in .env beside this file. nothing here has a working fallback, so a
-# missing secret fails the service rather than quietly starting insecure.
+# values come from the launcher's environment (declared in ../compose.yml), or from a .env
+# beside this file when run directly. each secret is required (${VAR:?}), so a missing one
+# stops compose instead of starting a service with an empty password. values that must
+# match another, like DATABASE_URL, default to it. CARDEA_KB is the host path of kb/; the
+# launcher sets it, and ./kb is the fallback.
 
 services:
+  # optional: only runs with the tunnel profile, which the launcher turns on when a token
+  # is set. the token can't be required here, because compose checks every service.
   cloudflared:
     image: cloudflare/cloudflared:2026.10.3
     container_name: cloudflared
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    profiles: [tunnel]
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-}
     restart: unless-stopped
     depends_on:
       - langfuse-web
       - basic-memory
 
-  # basic memory — the agents' notes. the sqlite index sits in a named volume on
-  # docker's own local storage, never on an SMB/NFS share. the markdown vaults
-  # these live beside this file on a NAS-local dataset, which is what matters.
-  # they must be writable by uid 1000 (appuser), or the server starts and stops serving.
+  # basic memory — the agents' notes. the sqlite index lives in a named volume because
+  # sqlite corrupts on an SMB/NFS share; the markdown in kb/ is fine there. kb/ must be
+  # writable by uid 1000 (appuser), or the server starts and then stops serving.
   #
-  # these endpoints have NO auth. 8766 is LAN-only by intent; do not route it through
-  # the tunnel without putting Cloudflare Access in front of it.
+  # no auth on these endpoints. keep 8766 on the LAN; never route it through the tunnel
+  # without cloudflare access in front of it.
   basic-memory:
     image: ghcr.io/basicmachines-co/basic-memory:0.24.1
     container_name: basic-memory
@@ -43,9 +45,36 @@ services:
     volumes:
       # one mount per project; register each after first boot with
       #   docker compose exec basic-memory basic-memory project create <name> /app/kb/<name>
-      - ./kb/alethia:/app/kb/alethia
-      - ./kb/homelab:/app/kb/homelab
+      - ${CARDEA_KB:-./kb}/alethia:/app/kb/alethia
+      - ${CARDEA_KB:-./kb}/homelab:/app/kb/homelab
       - basic_memory_data:/home/appuser/.basic-memory
+
+  # obsidian — the desktop app streamed to a browser at https://truenas.local:3001. it
+  # edits kb/ in place, the same markdown basic memory reads, so there is nothing to sync.
+  # only https is published: the stream needs a secure context, and its plain-http 3000
+  # would collide with langfuse. the cert is self-signed.
+  #
+  # the web desktop has a terminal with passwordless sudo, so anyone past the login is
+  # root in this container and can rewrite every vault. LAN only; never tunnel it.
+  obsidian:
+    image: lscr.io/linuxserver/obsidian:v1.14.4-ls148
+    container_name: obsidian
+    restart: unless-stopped
+    shm_size: "1gb"
+    ports:
+      - "3001:3001"
+    environment:
+      # uid 1000 owns kb/, so edits made here stay writable for basic memory.
+      PUID: 1000
+      PGID: 1000
+      TZ: Australia/Sydney
+      # an empty PASSWORD means no login at all, so compose refuses to run without both.
+      CUSTOM_USER: ${OBSIDIAN_USER:?set OBSIDIAN_USER in .env}
+      PASSWORD: ${OBSIDIAN_PASSWORD:?set OBSIDIAN_PASSWORD in .env}
+    volumes:
+      - obsidian_config:/config
+      # open this folder as the vault; its .obsidian/ settings come along with it.
+      - ${CARDEA_KB:-./kb}:/config/vaults/kb
 
   langfuse-worker:
     image: docker.io/langfuse/langfuse-worker:4.70.0
@@ -62,19 +91,16 @@ services:
     ports:
       - 127.0.0.1:3030:3030
     environment: &langfuse-worker-env
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
-      DATABASE_URL: ${DATABASE_URL}
-      SALT: ${SALT}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://truenas.local:3000}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/postgres}
+      SALT: ${SALT:?set SALT in .env}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY in .env}
       TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-true}
       LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: ${LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES:-false}
-      # Lets the worker reach the web service internally for in-app agent MCP
-      # calls without redirecting NEXTAUTH_URL, which also builds links for
-      # users. Pair it with LANGFUSE_MCP_ALLOWED_HOSTS on langfuse-web.
       CLICKHOUSE_MIGRATION_URL: ${CLICKHOUSE_MIGRATION_URL:-clickhouse://clickhouse:9000}
       CLICKHOUSE_URL: ${CLICKHOUSE_URL:-http://clickhouse:8123}
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-clickhouse}
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD in .env}
       CLICKHOUSE_CLUSTER_ENABLED: ${CLICKHOUSE_CLUSTER_ENABLED:-false}
       CLICKHOUSE_CLUSTER_NAME: ${CLICKHOUSE_CLUSTER_NAME:-default}
       LANGFUSE_USE_AZURE_BLOB: ${LANGFUSE_USE_AZURE_BLOB:-false}
@@ -83,14 +109,14 @@ services:
       LANGFUSE_S3_EVENT_UPLOAD_BUCKET: ${LANGFUSE_S3_EVENT_UPLOAD_BUCKET:-langfuse}
       LANGFUSE_S3_EVENT_UPLOAD_REGION: ${LANGFUSE_S3_EVENT_UPLOAD_REGION:-auto}
       LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID:-minio}
-      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY}
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY:-${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}}
       LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: ${LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT:-http://minio:9000}
       LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: ${LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE:-true}
       LANGFUSE_S3_EVENT_UPLOAD_PREFIX: ${LANGFUSE_S3_EVENT_UPLOAD_PREFIX:-events/}
       LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: ${LANGFUSE_S3_MEDIA_UPLOAD_BUCKET:-langfuse}
       LANGFUSE_S3_MEDIA_UPLOAD_REGION: ${LANGFUSE_S3_MEDIA_UPLOAD_REGION:-auto}
       LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: ${LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID:-minio}
-      LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY}
+      LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY:-${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}}
       LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: ${LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT:-http://minio:9000}
       LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: ${LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE:-true}
       LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: ${LANGFUSE_S3_MEDIA_UPLOAD_PREFIX:-media/}
@@ -102,21 +128,18 @@ services:
       LANGFUSE_S3_BATCH_EXPORT_PREFIX: ${LANGFUSE_S3_BATCH_EXPORT_PREFIX:-exports/}
       LANGFUSE_S3_BATCH_EXPORT_REGION: ${LANGFUSE_S3_BATCH_EXPORT_REGION:-auto}
       LANGFUSE_S3_BATCH_EXPORT_ENDPOINT: ${LANGFUSE_S3_BATCH_EXPORT_ENDPOINT:-http://minio:9000}
-      LANGFUSE_S3_BATCH_EXPORT_EXTERNAL_ENDPOINT: ${LANGFUSE_S3_BATCH_EXPORT_EXTERNAL_ENDPOINT:-http://nas.local:9090}
+      LANGFUSE_S3_BATCH_EXPORT_EXTERNAL_ENDPOINT: ${LANGFUSE_S3_BATCH_EXPORT_EXTERNAL_ENDPOINT:-http://truenas.local:9090}
       LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID: ${LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID:-minio}
-      LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY: ${LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY}
+      LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY: ${LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY:-${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}}
       LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE: ${LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE:-true}
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
-      REDIS_AUTH: ${REDIS_AUTH}
+      REDIS_AUTH: ${REDIS_AUTH:?set REDIS_AUTH in .env}
       LANGFUSE_BULLMQ_SKIP_REDIS_VERSION_CHECK: ${LANGFUSE_BULLMQ_SKIP_REDIS_VERSION_CHECK:-false}
       REDIS_TLS_ENABLED: ${REDIS_TLS_ENABLED:-false}
       REDIS_TLS_CA: ${REDIS_TLS_CA:-/certs/ca.crt}
       REDIS_TLS_CERT: ${REDIS_TLS_CERT:-/certs/redis.crt}
       REDIS_TLS_KEY: ${REDIS_TLS_KEY:-/certs/redis.key}
-      # Shared AI features configuration. These apply to AI features that run
-      # in both web and worker.
-      # In-app agent worker settings (ignored by the web service).
 
   langfuse-web:
     image: docker.io/langfuse/langfuse:4.70.0
@@ -126,16 +149,14 @@ services:
       - 3000:3000
     environment:
       <<: *langfuse-worker-env
-      # next.js standalone listens on $HOSTNAME, which docker sets to the container id.
-      # that resolves to one container address, not all of them, so the published port
-      # reaches nothing. force the wildcard.
+      # next.js listens on $HOSTNAME, which docker sets to the container id. that binds a
+      # single address the published port never reaches, so bind every address.
       HOSTNAME: "0.0.0.0"
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
-      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: ${LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT:-http://nas.local:9090}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?set NEXTAUTH_SECRET in .env}
+      # leave sign-ups on until your own account exists, then set true in .env.
+      AUTH_DISABLE_SIGNUP: ${AUTH_DISABLE_SIGNUP:-false}
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: ${LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT:-http://truenas.local:9090}
       LANGFUSE_S3_MEDIA_UPLOAD_INTERNAL_ENDPOINT: ${LANGFUSE_S3_MEDIA_UPLOAD_INTERNAL_ENDPOINT:-http://minio:9000}
-      # Hostnames allowed to reach the MCP endpoint, beyond NEXTAUTH_URL's own
-      # host. Required when the worker uses LANGFUSE_MCP_BASE_URL.
-      # In-app agent settings.
 
   clickhouse:
     image: docker.io/clickhouse/clickhouse-server:25.12.11.4
@@ -144,7 +165,7 @@ services:
     environment:
       CLICKHOUSE_DB: default
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-clickhouse}
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD in .env}
     volumes:
       - langfuse_clickhouse_data:/var/lib/clickhouse
       - langfuse_clickhouse_logs:/var/log/clickhouse-server
@@ -162,11 +183,11 @@ services:
     image: cgr.dev/chainguard/minio@sha256:268d68a2a3b6fc65f905a61f84d7eab6345ce6bff14f551e2b028ec31e6a1341
     restart: always
     entrypoint: sh
-    # create the 'langfuse' bucket before starting the service
+    # the folder is the bucket; langfuse expects 'langfuse' to exist at first start.
     command: -c 'mkdir -p /data/langfuse && minio server --address ":9000" --console-address ":9001" /data'
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
     ports:
       - 9090:9000
       - 127.0.0.1:9091:9001
@@ -183,7 +204,7 @@ services:
     image: docker.io/redis:7.4.11
     restart: always
     command: >
-      --requirepass ${REDIS_AUTH}
+      --requirepass ${REDIS_AUTH:?set REDIS_AUTH in .env}
       --maxmemory-policy noeviction
     ports:
       - 127.0.0.1:6379:6379
@@ -205,7 +226,7 @@ services:
       retries: 10
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
       TZ: UTC
       PGTZ: UTC
@@ -216,6 +237,8 @@ services:
 
 volumes:
   basic_memory_data:
+    driver: local
+  obsidian_config:
     driver: local
   langfuse_postgres_data:
     driver: local
