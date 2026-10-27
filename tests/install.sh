@@ -124,6 +124,17 @@ for mode in $MODES; do
   # gum splits its placeholder around the cursor, so check its summary line instead.
   if [ "$mode" = gum ]; then said 'kept'; else said '[keep existing]'; fi
 
+  # a stray paste saved in .env neither runs as a command nor is offered back, and a
+  # pasted value with spaces is asked again.
+  setup stray "$mode"
+  printf 'BASIC_MEMORY_URL=%s/mcp\nLANGFUSE_HOST=%s\nLANGFUSE_PUBLIC_KEY=# Persona: x\nnot a setting\n' "$NAS" "$NAS" > "$dir/repo/.env"
+  drive "" "" "pk with spaces" pk-ok sk-ok || fail "$name: exited non-zero"
+  unsaid 'command not found'
+  said "the saved langfuse public key isn't a key"
+  said 'that has spaces'
+  has_env LANGFUSE_PUBLIC_KEY pk-ok
+  has_env LANGFUSE_SECRET_KEY sk-ok
+
   # a bad langfuse address, then skip keeps it untested.
   setup skip "$mode"
   drive 127.0.0.1 127.0.0.1:1 skip || fail "$name: exited non-zero"

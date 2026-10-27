@@ -152,6 +152,17 @@ probe_mcp() {
   fi
 }
 
+# .env is data, not a script: read KEY=value lines, so a stray paste in it can't run as a command.
+load_env() {
+  [ -f "$ENV_FILE" ] || return 0
+  while IFS= read -r l_line || [ -n "$l_line" ]; do
+    l_key=${l_line%%=*}
+    case "$l_line" in [A-Z_]*=*) ;; *) continue ;; esac
+    case "$l_key" in *[!A-Z0-9_]*) continue ;; esac
+    export "$l_key=${l_line#*=}"
+  done < "$ENV_FILE"
+}
+
 # langfuse publishes a health endpoint; use it rather than guessing from the homepage.
 probe_langfuse() {
   host="$1"; label="$2"; REACHED=
@@ -201,8 +212,7 @@ run_checks() {
   fi
 
   step "services"
-  # shellcheck disable=SC1090
-  [ -f "$ENV_FILE" ] && { set -a; . "$ENV_FILE"; set +a; }
+  load_env
   probe_mcp      "${BASIC_MEMORY_URL:-}" "basic memory"
   probe_langfuse "${LANGFUSE_HOST:-}"    "langfuse"
 
@@ -240,7 +250,7 @@ fi
 # load whatever is already there so re-runs offer the current value as the default.
 step "configuration"
 if [ -f "$ENV_FILE" ]; then
-  set -a; . "$ENV_FILE"; set +a
+  load_env
   info "editing existing .env — press enter to keep a value"
 elif [ -z "$PROMPT" ]; then
   cp "$REPO_DIR/.env.example" "$ENV_FILE"
@@ -290,30 +300,35 @@ ask() {
 }
 
 ask_secret() {
-  var="$1"; label="$2"
+  var="$1"; label="$2"; s_name=$(printf '%s' "$2" | sed 's/ *$//')
   eval "current=\${$var:-}"
+  # keys never contain spaces; one that does is a stray paste, so don't offer to keep it.
+  case "$current" in *[[:space:]]*) warn "the saved $s_name isn't a key; paste it again"; current='' ;; esac
   if [ -z "$PROMPT" ]; then eval "$var=\"\$current\""; return; fi
-  reply=''; g_rc=2
-  if has_gum; then
-    if [ -n "$current" ]; then s_ph='keep existing'; else s_ph='hidden, optional'; fi
-    gum_read "$s_ph" "$label" --password
-    # esc keeps what was there, like enter on an empty field
-    [ "$g_rc" -ne 1 ] || reply=''
-  fi
-  if [ "$g_rc" -gt 1 ]; then
-    stty -echo < /dev/tty 2>/dev/null || true
-    if [ -n "$current" ]; then
-      printf '  %s%s%s %s[keep existing]%s ' "$B" "$label" "$R" "$D" "$R" > /dev/tty
-    else
-      printf '  %s%s%s %s(hidden, optional)%s ' "$B" "$label" "$R" "$D" "$R" > /dev/tty
+  while :; do
+    reply=''; g_rc=2
+    if has_gum; then
+      if [ -n "$current" ]; then s_ph='keep existing'; else s_ph='hidden, optional'; fi
+      gum_read "$s_ph" "$label" --password
+      # esc keeps what was there, like enter on an empty field
+      [ "$g_rc" -ne 1 ] || reply=''
     fi
-    read -r reply < /dev/tty || true
-    stty echo < /dev/tty 2>/dev/null || true
-    printf '\n' > /dev/tty
-  else
-    if [ -n "$reply" ]; then s_note='set'; elif [ -n "$current" ]; then s_note='kept'; else s_note='not set'; fi
-    chosen "$label" "$s_note"
-  fi
+    if [ "$g_rc" -gt 1 ]; then
+      stty -echo < /dev/tty 2>/dev/null || true
+      if [ -n "$current" ]; then
+        printf '  %s%s%s %s[keep existing]%s ' "$B" "$label" "$R" "$D" "$R" > /dev/tty
+      else
+        printf '  %s%s%s %s(hidden, optional)%s ' "$B" "$label" "$R" "$D" "$R" > /dev/tty
+      fi
+      read -r reply < /dev/tty || true
+      stty echo < /dev/tty 2>/dev/null || true
+      printf '\n' > /dev/tty
+    else
+      if [ -n "$reply" ]; then s_note='set'; elif [ -n "$current" ]; then s_note='kept'; else s_note='not set'; fi
+      chosen "$label" "$s_note"
+    fi
+    case "$reply" in *[[:space:]]*) bad "$s_name — that has spaces, so it isn't a key; paste just the key" ;; *) break ;; esac
+  done
   [ -n "$reply" ] || reply="$current"
   eval "$var=\"\$reply\""
 }
