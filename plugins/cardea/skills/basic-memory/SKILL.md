@@ -11,13 +11,63 @@ the NAS's `kb/` folder, the same files the user reads in Obsidian (see the `obsi
 
 ## Projects
 
+Every top-level folder in `kb/` is a project, and the server registers it on start.
+
 | Project | For |
 |---|---|
-| `alethia` | The Aletheia app: design notes, decisions, constraints. The default. |
-| `homelab` | The NAS, the Mac setup, cardea itself. |
+| `aletheia` | The Aletheia app. The default. |
+| `homelab` | The NAS, the network, the Mac setup, cardea itself. |
 
-Pass `project` explicitly. If a call fails because a project is missing, `list_memory_projects`
-shows what exists; registering a new one is the user's job on the NAS.
+Pass `project` explicitly. A project's notes can't link to another project's, so keep a note
+in the project it is about. For a new project, ask the user: it is a new folder in `kb/` and a
+restart of the stack.
+
+## Layout: PARA
+
+Every project has the same four folders. One question picks the folder:
+
+| Folder | Holds | Ask |
+|---|---|---|
+| `1-plans/<plan>/` | Work with an end: a feature, a migration. Spec, plan, open questions. | Does it finish? |
+| `2-areas/<area>/` | Lasting parts of the project, such as `sync/` or `nas/`. Decisions, constraints, gotchas, how it works. | Is it part of the project for good? |
+| `3-resources/` | Outside material: a library, an API, research, a vendor's quirks. | Did someone else make it? |
+| `4-archive/` | Finished plans and superseded notes, kept for their history. | Is it done or replaced? |
+
+- Areas are lowercase folder names, one per part of the project. Reuse an existing area
+  before adding one; `list_directory` shows them.
+- When a plan finishes, move anything lasting it produced (a decision, a gotcha) into its area,
+  then move the plan's folder to `4-archive/` with `move_note`.
+- When a decision is replaced, set the old note's `status: superseded`, move it to
+  `4-archive/`, and link the new one to it with `supersedes`.
+
+## Notes
+
+One topic per note. The title is what someone would search for, in sentence case:
+`Use CRDTs for sync`, `iCloud renames files during conflicts`. The note's kind goes in
+frontmatter, not in the folder:
+
+```markdown
+---
+type: decision        # decision, constraint, gotcha, reference or plan
+status: accepted      # decisions only: proposed, accepted or superseded
+date: 2026-10-27
+---
+# Use CRDTs for sync
+
+Why, in a few sentences: the problem, what was chosen, what it costs.
+
+## Observations
+- [decision] Automerge for note bodies, last-write-wins for metadata #sync
+- [rejected] Operational transform: needs a central server
+
+## Relations
+- supersedes [[Last-write-wins sync]]
+- constrained_by [[Notes must open offline in under 200ms]]
+```
+
+`## Observations` (`- [category] fact #tag`) and `## Relations` (`- relation [[Note title]]`)
+are what Basic Memory indexes; the links also draw the Obsidian graph. Dates are
+`YYYY-MM-DD`. Basic Memory adds its own `title` and `permalink`; leave them.
 
 ## When to read
 
@@ -28,18 +78,13 @@ shows what exists; registering a new one is the user's job on the NAS.
 ## When to write
 
 - A decision and why it was made, a constraint that is not visible in the code, a gotcha that
-  cost time. One topic per note.
-- Not: things the repo already records (code structure, git history, CLAUDE.md), progress
-  logs, or anything only this session needs.
+  cost time, the state of a plan in flight.
+- Not: things the repo already records (code structure, git history, CLAUDE.md), session logs,
+  or anything only this session needs.
 - Never secrets, keys, tokens or `.env` contents.
 
 `write_note` refuses to overwrite an existing note unless asked; prefer `edit_note` to append
 to or update a note that exists. Search first so you don't create a near-duplicate.
-
-## Format
-
-Write for a person reading in Obsidian: a clear title, a short body, and `[[Wikilinks]]` to
-related notes so the graph connects. Keep frontmatter minimal; Basic Memory adds its own.
 
 ## If it is unreachable
 

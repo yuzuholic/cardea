@@ -21,12 +21,9 @@ Source of truth for agent rules on this machine. install.sh links it to
 
 ## Working style
 
-- Research the existing code first, then current docs, and ask me last. Match surrounding
-  naming, idiom, and comment density.
-- For a non-trivial change, find at least three viable options, weigh them from the user's,
-  developer's and maintainer's side, recommend one, and name the cheapest option that has no
-  real tradeoffs.
-- Propose, then wait for an explicit yes before writing code.
+- Every search or lookup follows the `retrieval-order` skill: notes and code before the web,
+  and me last. Match surrounding naming, idiom, and comment density.
+- Propose, then wait for an explicit yes before writing code (see Decisions).
 - Flag before doing: database schema changes, new dependencies, and anything destructive.
 - Smallest change that works. No speculative abstraction, no scaffolding for a future that has
   not been asked for. But when I ask for something built to scale, build it; don't object that
@@ -37,6 +34,26 @@ Source of truth for agent rules on this machine. install.sh links it to
 - Comments: default to none. Write one only when it says something the code can't; the
   comment-audit skill has the rules.
 - Commits: `<type>: <subject>`. No scope, no body, no Co-Authored-By.
+- Agents come in two types. `cardea:orchestrator` (Opus 5.5, medium) plans, delegates and
+  reviews. `cardea:implementer` makes one scoped change: Opus 5.5 medium when I start it,
+  Sonnet 5.5 low when an orchestrator does. Inside herdr, each implementer gets its own pane.
+
+## Decisions
+
+Any decision that's mine to make goes through this, in plain chat, never the question picker: a
+design choice, a tradeoff, anything destructive or hard to undo, or anything above says to
+confirm. A choice with a clear default goes ahead, mentioned in one line.
+
+1. Outline the problem in plain language, then list the questions coming ("4 questions: …").
+2. Ask one question at a time, headed "Qn of N": what this part of the problem is, simply, then
+   at least three options in a table with what's good and not good about each. Mark one
+   **(recommended)**, weighed from the user's, developer's and maintainer's side, and name the
+   cheapest option with no real tradeoffs.
+3. When I answer, confirm it in one line, then wait for "next" before the following question;
+   I may have follow-ups. "Go with yours" takes the recommendation. If an answer changes a later
+   question, say so and revise the list.
+4. After the last one, summarise every decision and wait for a final go before acting.
+5. Write each confirmed decision to Basic Memory as a decision note.
 
 ## Stack
 
@@ -47,7 +64,8 @@ Source of truth for agent rules on this machine. install.sh links it to
 ## Memory
 
 - Basic Memory holds durable notes. Write there when a decision or constraint outlives the
-  session; read from there before asking me something I may have already answered.
+  session, filed by PARA (the `basic-memory` skill). Read from there before asking me
+  something I may have already answered.
 
 ## Isolation
 

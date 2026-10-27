@@ -71,6 +71,8 @@ installed() {
   calls 'mcp add-json -s user' 6
   called "claude plugin install langfuse-observability --marketplace langfuse/Claude-Observability-Plugin -y"
   called "claude plugin install cardea --marketplace $dir/repo -y"
+  # plannotator is already installed in the fake, so a run refreshes it instead.
+  called "claude plugin update plannotator@plannotator"
   for m in superpowers:obra/superpowers-marketplace ponytail:DietrichGebert/ponytail \
            apple-skills:Prisma-Labs-Dev/apple-skills cloudflare:cloudflare/skills humanizer:blader/humanizer; do
     called "claude plugin install ${m%%:*} --marketplace ${m#*:} -y"

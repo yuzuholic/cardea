@@ -1,0 +1,33 @@
+{
+  "description": "cardea: a session note on where to look things up, a block on reading secrets, the commit message format, and a once-a-session nudge before the web.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|compact",
+        "hooks": [
+          {"type": "command", "command": "python3 -I \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" session", "timeout": 8}
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Read|Grep|Edit|Bash",
+        "hooks": [
+          {"type": "command", "command": "python3 -I \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" secrets", "timeout": 5}
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {"type": "command", "if": "Bash(git *)", "command": "python3 -I \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" commit", "timeout": 5}
+        ]
+      },
+      {
+        "matcher": "WebSearch|WebFetch",
+        "hooks": [
+          {"type": "command", "command": "python3 -I \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" web", "timeout": 5}
+        ]
+      }
+    ]
+  }
+}

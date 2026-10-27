@@ -436,7 +436,9 @@ plugin() {
   if claude plugin list --json 2>/dev/null | grep -q "\"id\": \"$id\""; then
     # installed but switched off still counts as missing from the setup.
     claude plugin enable "$id" >/dev/null 2>&1 || true
-    ok "plugin: $id"; return 0
+    # the install is a cached copy, so a rerun refreshes it.
+    if spin "updating plugin $id" claude plugin update "$id" >/dev/null; then ok "plugin: $id"; else bad "plugin: $id — update failed"; fi
+    return 0
   fi
   if spin "installing plugin $id" claude plugin install "${id%@*}" --marketplace "$p_src" -y >/dev/null; then ok "plugin: $id"; else bad "plugin: $id — install failed"; fi
 }

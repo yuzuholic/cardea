@@ -20,6 +20,13 @@ jobs:
       - run: npm install -g @anthropic-ai/claude-code@2.1.296
       - run: sh tests/plugin.sh
 
+  hooks:
+    # the hooks are python stdlib only, so ubuntu's python3 and git cover them.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: sh tests/hooks.sh
+
   vendor-skills:
     # herdr comes from homebrew, which the macOS runners already have.
     runs-on: macos-latest
