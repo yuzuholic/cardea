@@ -1,0 +1,82 @@
+---
+title: Tests
+description: What each test checks, what it needs, and how CI runs them.
+---
+
+Each test is one shell script that stops at the first failure and says what broke. Run any of
+them from the repo root:
+
+```sh
+sh tests/install.sh
+```
+
+None of them touch your real setup. They work on copies, with a scratch home folder, and
+stand-in tools where the real ones would install things.
+
+| Test | What it checks | Needs |
+|---|---|---|
+| `install` | The whole of `install.sh` | expect, python3, curl, git; gum for the gum half |
+| `plugin` | The Cardea plugin and its marketplace | Claude Code |
+| `vendor-skills` | The herdr and graphify skills | herdr, graphify |
+| `nas` | The NAS launcher and the stack it runs | Docker |
+
+## install
+
+Runs `install.sh` from start to finish against stand-ins: fake `brew`, `claude`, `herdr` and
+`plannotator` that only record how they were called (in `tests/fakes/`), and a small fake NAS
+that answers for Basic Memory and Langfuse. It drives the prompts through a real terminal
+and checks what the run did, not just what it printed:
+
+- A bare address like `127.0.0.1` gets Basic Memory's port and path, and Langfuse defaults to
+  the same machine.
+- A wrong address can be retried, replaced, skipped, or left with Ctrl-D (Esc with gum),
+  without the prompt looping forever.
+- Keys never appear on screen, Enter keeps the values already saved, and `.env` is readable
+  only by you.
+- `--no-prompt` asks nothing, `--check` changes nothing, and piping from `curl` works even
+  when a step reads from the pipe.
+- With no terminal, or with `NO_COLOR` set, the output is plain. On a fresh Mac, where gum
+  only arrives with the Brewfile, the run switches to gum part-way through.
+- Every full run registers the six MCP servers, installs the plugins and links the rules
+  file.
+
+Every case runs twice: once with the plain prompts and once with gum. gum must not be in a
+system folder like `/usr/bin`, or the plain half could not hide it; the test refuses to run
+if it is.
+
+## plugin
+
+Checks that `claude plugin validate` accepts the marketplace and the plugin, and that every
+skill and agent has a name matching its file and a description.
+
+## vendor-skills
+
+Runs `scripts/vendor-skills.sh` into a scratch folder and checks that both skills come out
+named correctly, that a second run replaces them cleanly, and that graphify's installer never
+edits the real `CLAUDE.md`.
+
+## nas
+
+Builds the launcher image, then checks:
+
+- The outer `compose.yml` refuses to start without its settings and names the missing one.
+- Inside the launcher, the stack mounts the notes from the real folder, builds the Postgres
+  address from `POSTGRES_PASSWORD`, refuses to start without a required secret, and leaves
+  the Cloudflare tunnel out until there is a token.
+- The launcher really starts a small stack, applies a `.env` change on `up -d`, starts the
+  tunnel once a token is set, and stops everything when it stops.
+
+## CI
+
+`.github/workflows/test.yml` runs on every push to `main` and every pull request:
+
+| Job | Runs on | What it does |
+|---|---|---|
+| `install` | Ubuntu | `tests/install.sh`, with expect from apt and gum 2.0.2 from its release. Ubuntu's `sh` is dash, which keeps `install.sh` to plain POSIX shell. |
+| `plugin` | Ubuntu | `tests/plugin.sh`, with Claude Code 2.1.296 from npm |
+| `vendor-skills` | macOS | `tests/vendor-skills.sh`, with herdr from Homebrew and graphify 0.9.88 from uv |
+| `nas` | Ubuntu | `tests/nas.sh` |
+| `docs` | Ubuntu | Builds this site under `/cardea`, the way GitHub Pages serves it |
+
+`.github/workflows/docs.yml` builds the site again on every push to `main` and publishes it
+to GitHub Pages.

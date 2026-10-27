@@ -15,11 +15,14 @@ leaves everything else to you.
 | MCP servers | User scope in `~/.claude.json` | `claude mcp add-json --scope user` |
 | <Tool icon="plannotator.png">Plannotator</Tool> | Plugin, plus the `plannotator` binary | Plugin marketplace, binary installer |
 | <Tool icon="langfuse.svg">Langfuse tracing</Tool> | Plugin | Plugin marketplace, configured from `.env` |
+| <Tool icon="claude.svg" mono>Cardea plugin</Tool> | Plugin, read from this checkout | `claude plugin install` from the repo |
+| Five more plugins | Plugins | Their own marketplaces |
+| <Tool icon="herdr.svg">herdr</Tool> and graphify skills | `~/.claude/skills/herdr/`, `~/.claude/skills/graphify/` | `scripts/vendor-skills.sh` |
 
 ## What Cardea leaves alone
 
 - `~/.claude/settings.json`: your hooks, permissions and preferences.
-- Your own skills in `~/.claude/skills/` and any other plugins.
+- Your other skills in `~/.claude/skills/`, and any other plugins.
 - MCP servers with names Cardea does not use.
 
 ## MCP servers
@@ -51,6 +54,53 @@ pinned version.
 every tool call, and timing, grouped by session. The script always points it at the NAS, even
 before there are keys, so it never falls back to Langfuse's hosted service. The secret key is
 passed on standard input, kept out of the process list, and stored in the macOS keychain.
+
+## The Cardea plugin
+
+Cardea's own skills and agents ship as a Claude Code plugin. Skills load when a task calls
+for them, so unlike the rules in `CLAUDE.md` they cost nothing until they are used.
+
+| For | Skills |
+|---|---|
+| The self-hosted stack | `basic-memory`, `langfuse`, `obsidian`, `plannotator`, `serena`, `graphify` |
+| iOS | `driving-ios-simulator-with-axe`, `rendering-swiftui-previews`, `sim-clone-restore`, `grdb`, `aletheia-conventions` |
+| Reviews and releases | `panel`, `comment-audit`, `pre-commit-audit`, `semantic-commit`, `local-merge`, `release-changelog` |
+| Recommendations | `recsys` |
+
+Three agents make up the design panel: a UX designer, the average chud and a power user. The
+`panel` skill puts a question to all three at once and merges their verdicts into one
+recommendation.
+
+`aletheia-conventions` holds the Aletheia app's coding rules. As a skill, they apply when
+work on that app picks it up, not in every session.
+
+`install.sh` installs the plugin from your checkout. Claude Code reads it in place, so an
+edited skill takes effect at the next session, or straight away after `/reload-plugins`.
+
+Anyone can install it without the rest of Cardea:
+
+```sh
+claude plugin marketplace add yuzuholic/cardea
+claude plugin install cardea@cardea
+```
+
+## Marketplace plugins
+
+The script installs these from their own marketplaces, and switches back on any that were
+turned off.
+
+| Plugin | What it adds |
+|---|---|
+| [superpowers](https://github.com/obra/superpowers-marketplace) | Working habits: brainstorming, plans, TDD, systematic debugging, code review |
+| [ponytail](https://github.com/DietrichGebert/ponytail) | Pushes toward the simplest solution that works |
+| [apple-skills](https://github.com/Prisma-Labs-Dev/apple-skills) | Apple API references: SwiftUI, UIKit, SwiftData and more |
+| [cloudflare](https://github.com/cloudflare/skills) | Guidance for building on Cloudflare |
+| [humanizer](https://github.com/blader/humanizer) | Rewrites text that reads as machine-written |
+
+herdr and graphify each ship a skill of their own. `scripts/vendor-skills.sh` generates both
+from the installed versions on every run, so they always match. graphify's installer would
+also edit `CLAUDE.md`; the script runs it against a scratch folder so the real one is never
+touched.
 
 ## Your subscription, not an API key
 

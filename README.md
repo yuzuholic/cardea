@@ -10,6 +10,7 @@ talks to on a home NAS.
 [![test](https://github.com/yuzuholic/cardea/actions/workflows/test.yml/badge.svg)](https://github.com/yuzuholic/cardea/actions/workflows/test.yml)
 [![docs](https://github.com/yuzuholic/cardea/actions/workflows/docs.yml/badge.svg)](https://github.com/yuzuholic/cardea/actions/workflows/docs.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-995cd0.svg)](LICENSE)
+[![Docker image](https://img.shields.io/docker/image-size/yuzuholic/cardea/latest?label=docker%20image&color=5549b7)](https://hub.docker.com/r/yuzuholic/cardea)
 
 **[Read the docs](https://yuzuholic.github.io/cardea/docs)**
 

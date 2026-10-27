@@ -11,6 +11,7 @@ const PAGES: Page[] = [
   { title: 'Stack', summary: 'Every tool and its pinned version', href: '/docs/stack' },
   { title: 'NAS', summary: 'Services, ports, secrets and backups', href: '/docs/nas' },
   { title: 'Decisions', summary: 'Why the stack looks like this', href: '/docs/decisions' },
+  { title: 'Tests', summary: 'What each test checks and how CI runs them', href: '/docs/tests' },
 ];
 
 export function Landing() {

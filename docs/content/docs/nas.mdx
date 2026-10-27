@@ -24,8 +24,15 @@ sudo docker compose logs -f cardea
 
 <Callout type="warn" title="cardea controls Docker on the NAS">
   To start the services, `cardea` talks to the NAS's Docker through its socket. Anything with
-  that access can do anything to the NAS, so only run a `cardea` image you built yourself.
+  that access can do anything to the NAS, so only run an image you trust: the published
+  `yuzuholic/cardea`, or one you built from this repo.
 </Callout>
+
+## The image
+
+[`yuzuholic/cardea`](https://hub.docker.com/r/yuzuholic/cardea) is on Docker Hub for x86 and
+Arm (`linux/amd64` and `linux/arm64`). `:latest` follows the newest build; `:0.1.0` is the
+first release, and the same image today.
 
 ## Changing the stack
 
@@ -38,8 +45,8 @@ docker buildx build --platform linux/amd64,linux/arm64 -t yuzuholic/cardea:lates
 ```
 
 Watchtower on the NAS picks up a new `:latest` by itself, which briefly restarts the whole
-stack. To choose when an update lands, tag the image (for example `:0.1.0`) and set that tag
-in `compose.yml`.
+stack. To choose when an update lands, set a release tag such as `:0.1.0` in `compose.yml`
+instead, and change it when you want the next one.
 
 After changing `.env`, run `sudo docker compose up -d`. It sees the new values, recreates
 `cardea`, and `cardea` applies them to the stack. `restart` is not enough: it reuses the old
@@ -151,7 +158,7 @@ Add a login to the NAS `.env` first. An empty password would mean no login at al
 without both values the stack refuses to start:
 
 ```sh
-OBSIDIAN_USER=angelo
+OBSIDIAN_USER=admin
 OBSIDIAN_PASSWORD=   # openssl rand -hex 24
 ```
 

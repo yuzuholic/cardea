@@ -1,4 +1,12 @@
 {
   "title": "Cardea",
-  "pages": ["index", "install", "claude-code", "stack", "nas", "decisions"]
+  "pages": [
+    "index",
+    "install",
+    "claude-code",
+    "stack",
+    "nas",
+    "decisions",
+    "tests"
+  ]
 }

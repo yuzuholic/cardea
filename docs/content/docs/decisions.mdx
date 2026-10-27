@@ -27,10 +27,16 @@ column heading to sort.
       why: <>Everything here is personal, and anything that varies belongs in the project, not the machine. The script takes no profile argument.</>,
     },
     {
-      title: 'One rules file',
+      title: 'One global rules file, linked from the repo',
       area: 'Rules',
       status: 'Adopted',
-      why: <><code>claude/CLAUDE.md</code> is the only global rules file, linked into <code>~/.claude/</code>. It holds rules that apply everywhere: how to communicate, how to work, the default stack. Rules for one project, such as an app's architecture or naming, go in that project's own <code>CLAUDE.md</code>.</>,
+      why: <><code>claude/CLAUDE.md</code> is linked to <code>~/.claude/CLAUDE.md</code>, so editing it in the repo changes every session. It only holds machine-level rules: how to communicate and work, where things live, the default stack, memory, isolation and secrets. Rules for one project, such as an app's architecture or naming, live in that project's repo.</>,
+    },
+    {
+      title: 'One Cardea plugin for skills and agents',
+      area: 'Rules',
+      status: 'Adopted',
+      why: <>Every skill and agent ships in one plugin that anyone can install, and skills load only when a task calls for them. The global rules stay in <code>CLAUDE.md</code>, because a plugin cannot ship one. Project rules that are only needed sometimes, like <code>aletheia-conventions</code>, become skills instead.</>,
     },
     {
       title: 'Link files, never folders',
