@@ -31,8 +31,8 @@ sudo docker compose logs -f cardea
 ## The image
 
 [`yuzuholic/cardea`](https://hub.docker.com/r/yuzuholic/cardea) is on Docker Hub for x86 and
-Arm (`linux/amd64` and `linux/arm64`). `:latest` follows the newest build; `:0.1.0` is the
-first release, and the same image today.
+Arm (`linux/amd64` and `linux/arm64`). `:latest` follows the newest build, which is
+`:0.2.0` today; `:0.1.0` was the first release.
 
 ## Changing the stack
 
@@ -45,7 +45,7 @@ docker buildx build --platform linux/amd64,linux/arm64 -t yuzuholic/cardea:lates
 ```
 
 Watchtower on the NAS picks up a new `:latest` by itself, which briefly restarts the whole
-stack. To choose when an update lands, set a release tag such as `:0.1.0` in `compose.yml`
+stack. To choose when an update lands, set a release tag such as `:0.2.0` in `compose.yml`
 instead, and change it when you want the next one.
 
 After changing `.env`, run `sudo docker compose up -d`. It sees the new values, recreates
@@ -53,7 +53,8 @@ After changing `.env`, run `sudo docker compose up -d`. It sees the new values, 
 container with the old values.
 
 The services keep the project name `lab`, so their containers and volumes keep their old
-`lab_` names. To use a different project name or notes folder, set `CARDEA_PROJECT` or
+`lab_` names. That is also why Portainer shows two stacks: `cardea`, which is only the
+launcher, and `lab`, the services it starts. To use a different project name or notes folder, set `CARDEA_PROJECT` or
 `CARDEA_KB` on the `cardea` service.
 
 ## Moving from the old stack
