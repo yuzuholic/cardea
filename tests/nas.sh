@@ -29,8 +29,8 @@ docker compose -f nas/compose.yml --env-file "$work/filled.env" config >/dev/nul
 # --- the stack renders inside the launcher ------------------------------------
 render() { docker run --rm --env-file "$1" -e CARDEA_KB=/srv/kb --entrypoint docker "$IMAGE" compose -p lab -f /cardea/compose.yml config 2>&1; }
 config=$(render "$work/filled.env") || fail "stack does not render: $config"
-echo "$config" | grep -q 'source: /srv/kb/alethia' || fail "basic memory isn't mounted from CARDEA_KB"
-echo "$config" | grep -q 'source: /srv/kb$' || fail "obsidian isn't mounted from CARDEA_KB"
+[ "$(echo "$config" | grep -c 'source: /srv/kb$')" -eq 2 ] || fail "basic memory and obsidian aren't both mounted from CARDEA_KB"
+echo "$config" | grep -q 'BASIC_MEMORY_PROJECT_ROOT: /app/kb' || fail "basic memory can create projects outside kb/"
 echo "$config" | grep -q 'DATABASE_URL: postgresql://postgres:dummy-POSTGRES_PASSWORD@postgres' || fail "DATABASE_URL isn't built from POSTGRES_PASSWORD"
 echo "$config" | grep -q '^  cloudflared:' && fail "cloudflared renders without the tunnel profile"
 grep -v '^SALT=' "$work/filled.env" > "$work/nosalt.env"

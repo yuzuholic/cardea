@@ -27,27 +27,35 @@ services:
   # sqlite corrupts on an SMB/NFS share; the markdown in kb/ is fine there. kb/ must be
   # writable by uid 1000 (appuser), or the server starts and then stops serving.
   #
+  # every top-level folder in kb/ is a project, registered at each start, so a new project
+  # is just a new folder and a restart. adding a registered project again is a no-op.
+  #
   # no auth on these endpoints. keep 8766 on the LAN; never route it through the tunnel
   # without cloudflare access in front of it.
   basic-memory:
     image: ghcr.io/basicmachines-co/basic-memory:0.24.1
     container_name: basic-memory
     restart: unless-stopped
-    command: >
-      basic-memory mcp
-      --transport streamable-http
-      --host 0.0.0.0
-      --port 8000
+    command:
+      - sh
+      - -c
+      - |
+        for p in /app/kb/*/; do
+          [ -d "$$p" ] || continue
+          basic-memory project add "$$(basename "$$p")" "$$p" || exit 1
+        done
+        basic-memory project default aletheia
+        exec basic-memory mcp --transport streamable-http --host 0.0.0.0 --port 8000
     ports:
       - "8766:8000"
     environment:
-      BASIC_MEMORY_DEFAULT_PROJECT: alethia
+      # projects may only live under kb/; the image's default root is its own scratch space.
+      BASIC_MEMORY_PROJECT_ROOT: /app/kb
     volumes:
-      # one mount per project; register each after first boot with
-      #   docker compose exec basic-memory basic-memory project create <name> /app/kb/<name>
-      - ${CARDEA_KB:-./kb}/alethia:/app/kb/alethia
-      - ${CARDEA_KB:-./kb}/homelab:/app/kb/homelab
-      - basic_memory_data:/home/appuser/.basic-memory
+      - ${CARDEA_KB:-./kb}:/app/kb
+      # the whole home, not ~/.basic-memory: the image has no such folder, so a fresh volume
+      # there would be root-owned and unwritable. home exists, owned by appuser.
+      - basic_memory_home:/home/appuser
 
   # obsidian — the desktop app streamed to a browser at https://truenas.local:3001. it
   # edits kb/ in place, the same markdown basic memory reads, so there is nothing to sync.
@@ -236,7 +244,7 @@ services:
       - langfuse_postgres_data:/var/lib/postgresql/data
 
 volumes:
-  basic_memory_data:
+  basic_memory_home:
     driver: local
   obsidian_config:
     driver: local
