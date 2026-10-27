@@ -158,10 +158,10 @@ Every project has the same four folders, after the PARA method. One question pic
 
 | Folder | Holds | Ask |
 |---|---|---|
-| `1-plans/<plan>/` | Work with an end, such as a feature or a migration | Does it finish? |
-| `2-areas/<area>/` | Lasting parts of the project: decisions, constraints, gotchas, how it works | Is it part of the project for good? |
-| `3-resources/` | Outside material: a library, an API, research | Did someone else make it? |
-| `4-archive/` | Finished plans and replaced notes, kept for their history | Is it done or replaced? |
+| `plans/<plan>/` | Work with an end, such as a feature or a migration | Does it finish? |
+| `areas/<area>/` | Lasting parts of the project: decisions, constraints, gotchas, how it works | Is it part of the project for good? |
+| `resources/` | Outside material: a library, an API, research | Did someone else make it? |
+| `archive/` | Finished plans and replaced notes, kept for their history | Is it done or replaced? |
 
 What kind of note it is goes in its properties, not its folder, so Obsidian can list every
 decision or gotcha across all projects:
@@ -181,7 +181,7 @@ date: 2026-10-27
 - constrained_by [[The app works offline first]]
 ```
 
-A note like that one lives at `aletheia/2-areas/database/Use GRDB for offline storage.md`.
+A note like that one lives at `aletheia/areas/database/Use GRDB for offline storage.md`.
 Basic Memory reads the `## Observations` and `## Relations` sections, and the links also draw
 Obsidian's graph. The `basic-memory` skill in the Cardea plugin has the full rules agents
 follow.

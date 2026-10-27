@@ -17,7 +17,7 @@ markdown Basic Memory reads and writes. Edits on either side are the same files;
   `[[Wikilinks]]` to related notes, and plain markdown. No HTML, no tool-specific syntax.
 - `kb/.obsidian/` holds Obsidian's own settings. Never write to it.
 - To point the user at a note, give its title or path inside the vault, for example
-  `aletheia/2-areas/database/Use GRDB for offline storage.md`.
+  `aletheia/areas/database/Use GRDB for offline storage.md`.
 
 ## Access
 

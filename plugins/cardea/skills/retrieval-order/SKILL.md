@@ -15,7 +15,7 @@ Asking the user is last.
 | 1 | **This session** | What was said, read or decided already | Scroll back before you search again. |
 | 2 | **Rules and auto-memory** | Standing instructions and facts about the user | Global and project `CLAUDE.md`, and the auto-memory `MEMORY.md`. Already loaded; reread them, don't rediscover them. |
 | 3 | **Basic Memory** | Past decisions, constraints, gotchas: the *why* | `recent_activity`, then `search_notes` in the project (see `basic-memory`). |
-| 4 | **The active plan** | What we agreed to do right now | The approved plan in this session, and the project's `1-plans/` in Basic Memory. |
+| 4 | **The active plan** | What we agreed to do right now | The approved plan in this session, and the project's `plans/` in Basic Memory. |
 | 5 | **graphify** | Where to look in a codebase you don't know yet | `graphify-out/` if it exists (see `graphify`). |
 | 6 | **Serena, then the code** | What actually exists: the *what* | Serena for a symbol you can name (see `serena`); Grep, Glob and Read for text, config and non-code files. |
 | 7 | **Git history and GitHub** | Why the code is this way, and when it changed | `git log -S`, `git log -p <file>`, `git blame`; `gh pr` and `gh issue` for the discussion. |

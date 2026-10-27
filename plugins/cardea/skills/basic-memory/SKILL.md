@@ -28,17 +28,17 @@ Every project has the same four folders. One question picks the folder:
 
 | Folder | Holds | Ask |
 |---|---|---|
-| `1-plans/<plan>/` | Work with an end: a feature, a migration. Spec, plan, open questions. | Does it finish? |
-| `2-areas/<area>/` | Lasting parts of the project, such as `sync/` or `nas/`. Decisions, constraints, gotchas, how it works. | Is it part of the project for good? |
-| `3-resources/` | Outside material: a library, an API, research, a vendor's quirks. | Did someone else make it? |
-| `4-archive/` | Finished plans and superseded notes, kept for their history. | Is it done or replaced? |
+| `plans/<plan>/` | Work with an end: a feature, a migration. Spec, plan, open questions. | Does it finish? |
+| `areas/<area>/` | Lasting parts of the project, such as `sync/` or `nas/`. Decisions, constraints, gotchas, how it works. | Is it part of the project for good? |
+| `resources/` | Outside material: a library, an API, research, a vendor's quirks. | Did someone else make it? |
+| `archive/` | Finished plans and superseded notes, kept for their history. | Is it done or replaced? |
 
 - Areas are lowercase folder names, one per part of the project. Reuse an existing area
   before adding one; `list_directory` shows them.
 - When a plan finishes, move anything lasting it produced (a decision, a gotcha) into its area,
-  then move the plan's folder to `4-archive/` with `move_note`.
+  then move the plan's folder to `archive/` with `move_note`.
 - When a decision is replaced, set the old note's `status: superseded`, move it to
-  `4-archive/`, and link the new one to it with `supersedes`.
+  `archive/`, and link the new one to it with `supersedes`.
 
 ## Notes
 
