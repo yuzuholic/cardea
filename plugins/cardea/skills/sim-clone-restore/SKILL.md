@@ -14,7 +14,10 @@ use those names.
 
 - **Never use the golden simulator directly.** Only `simctl clone` it, and only while it is shut
   down. Never touch another task's clone or a stock simulator someone else is using.
-- **One clone per task**, named `<app>-<task>`. Delete it when the work lands.
+- **One clone per task**, named `<app>-<task>`. Delete it when the work lands; under an
+  orchestrator, its teardown does this from the UDID the implementer reports.
+- **Tests run with `-parallel-testing-enabled NO`** while other tasks may be running, so no task
+  makes shared test clones that another task's cleanup could delete mid-run.
 - **Restoring is destructive** - it replaces the app's data. Only into a simulator made for this task,
   or the golden one when rebuilding it was asked for. Never a physical device.
 - Golden missing: stop and tell the user. Rebuild it only when asked.

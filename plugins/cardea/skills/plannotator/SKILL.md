@@ -21,6 +21,9 @@ opens it for review, and your turn ends. The user's answer arrives as a later me
 So write plans that survive a careful read: what changes, which files, how it will be
 checked, and what is out of scope.
 
+An orchestrator sends every plan with two or more implementers through here, and states a
+one-implementer plan in chat instead. Implementers never use it.
+
 ## Commands the user can run
 
 | Command | What it opens |

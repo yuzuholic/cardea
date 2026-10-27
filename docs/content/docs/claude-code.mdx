@@ -116,20 +116,33 @@ claude --agent cardea:orchestrator --effort medium
 claude --agent cardea:implementer --effort medium
 ```
 
-The orchestrator reads the code, tells you its plan, and splits the work into tasks one
-implementer can finish alone. Each implementer gets a brief with the goal, the files, the
-limits and the check that proves it worked. It makes the change, runs the check and reports
-what it changed, what it checked and what it left. The orchestrator reviews each report and
-then reports to you.
+The orchestrator reads the code (starting from the graphify map when the repo has one) and
+splits the work into tasks one implementer can finish alone, at most five at once. A plan with
+two or more implementers opens in Plannotator for your approval; a single task starts straight
+away. Each implementer gets a brief with the goal, the files, the limits and the check that
+proves it worked. It makes the change, runs the check and reports what it changed, what it
+checked and what it left.
 
-**Inside herdr**, every implementer gets a pane of its own beside yours, so you can watch it
-work and step in. The orchestrator opens the pane without taking your focus, starts the
-implementer in it, sends the brief and reads the result back. If a pane stops on a question
-(trusting a folder, a permission, anything else), the orchestrator asks you; it never answers
-for you. Once you've seen the results, it closes the panes it opened.
+The orchestrator never waits on an implementer in the foreground, so it can answer you while
+they work. A task that changes files alongside others, or builds an app, gets its own git
+worktree and branch; read-only tasks and a lone small change run in your checkout.
+Implementers stage their work and never commit. The orchestrator reviews each one, then lands
+it in your checkout as uncommitted changes, one at a time in the order they finish, under a
+per-repo lock that also keeps orchestrators in other sessions from landing at the same time.
+If a change no longer applies, or its check fails in your checkout, it stops and asks you.
+After landing, it removes the worktree, its build data, the branch, the tab and any simulator
+clone the task made. Saying `close impl-<task>` does the same at any time. When the batch is
+done, it deletes unavailable simulators, reports the disk space freed, and refreshes the
+graphify map.
 
-**Outside herdr**, it starts implementers as ordinary subagents instead, on Sonnet at low
-effort.
+**Inside herdr**, every implementer gets a tab of its own in your workspace, named
+`impl-<task>`, so you can watch it work and step in. The orchestrator opens the tab without
+taking your focus, starts the implementer in it, sends the brief and reads the result back. If
+an implementer stops on a question (trusting a folder, a permission, anything else), the
+orchestrator asks you; it never answers for you.
+
+**Outside herdr**, it starts implementers as ordinary background subagents instead, on Sonnet
+at low effort.
 
 ## Hooks
 

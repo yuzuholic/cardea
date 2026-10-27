@@ -7,7 +7,8 @@ description: "Serena, the MCP server that reads and edits code by symbol through
 
 Serena (`serena` MCP server, `--context claude-code`) works on symbols instead of text: it
 asks the project's language server where things are defined and used. It starts in whatever
-directory Claude Code was launched from (`--project-from-cwd`).
+directory Claude Code was launched from (`--project-from-cwd`), so an implementer in a worktree
+gets the worktree. Call `initial_instructions` once per session before the first Serena call.
 
 ## Reach for it when
 
@@ -33,7 +34,8 @@ project come back empty or wrong. Once per project, from its root:
 xcode-build-server config -project MyApp.xcodeproj -scheme MyApp
 ```
 
-(`-workspace MyApp.xcworkspace` for a workspace.) If lookups look stale after big changes,
+(`-workspace MyApp.xcworkspace` for a workspace.) A new worktree has no `buildServer.json` if
+the project ignores it; run the same command in the worktree first. If lookups look stale after big changes,
 build the scheme once in Xcode or XcodeBuildMCP so the index catches up.
 
 ## Memory

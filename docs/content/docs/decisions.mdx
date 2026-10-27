@@ -54,7 +54,55 @@ column heading to sort.
       title: 'Two agent types: orchestrator and implementer',
       area: 'Agent',
       status: 'Adopted',
-      why: <>The planning and the review happen on Opus, where they matter; the bulk of the edits run cheaply on Sonnet at low effort, because the brief already carries the thinking. Inside herdr each implementer gets its own pane, so every one of them stays visible and you can step in.</>,
+      why: <>The planning and the review happen on Opus, where they matter; the bulk of the edits run cheaply on Sonnet at low effort, because the brief already carries the thinking. Inside herdr each implementer gets its own tab, so every one of them stays visible and you can step in.</>,
+    },
+    {
+      title: 'The orchestrator never blocks on implementers',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>The user should get an answer from the orchestrator at any time. Every wait runs as a background command that wakes it on exit, with no foreground <code>--wait</code>, polling or sleeps.</>,
+    },
+    {
+      title: 'One tab per implementer',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>Inside herdr each implementer opens in a new tab of the current workspace, named <code>impl-&lt;task&gt;</code>, without taking focus. Split panes become unusable past about three. A split for one or two, a separate workspace per batch, and splits for everything were considered.</>,
+    },
+    {
+      title: 'A worktree when a task needs one',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>The orchestrator gives a task its own git worktree and branch when it changes files alongside other implementers or builds an app; read-only tasks and a lone small change run in the user's checkout. herdr worktree workspaces would mean a workspace per task. container-use runs Linux containers, which cannot run Xcode or the simulator.</>,
+    },
+    {
+      title: 'Land staged diffs, one at a time, under a lock',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>Implementers stage and never commit, so the rule against unrequested commits holds. The orchestrator copies each reviewed diff into the user's checkout as uncommitted changes with <code>git apply</code>, which applies all or nothing, in the order tasks finish. <code>lockf</code> on a lock file in the repo's git directory keeps orchestrators in different sessions from landing at the same time; it waits without polling and releases when its holder exits. Committing on task branches and merging, leaving branches for the user, and pull requests were rejected for committing without being asked or blocking cleanup.</>,
+    },
+    {
+      title: 'The orchestrator cleans up after review',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>Once a task has landed, the orchestrator removes its worktree and build data, branch, tab and simulator clone; the user can also close any task by name. Self-closing implementers would delete work before review, and manual cleanup fills the disk.</>,
+    },
+    {
+      title: 'Serial tests and a disk report for simulators',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>Each task deletes only its own simulator clone. Implementers run tests with <code>-parallel-testing-enabled NO</code>, so no shared test clones exist for one task's cleanup to break another's run. When a batch ends, unavailable simulators are deleted and the freed space is reported.</>,
+    },
+    {
+      title: 'Plannotator for plans with several implementers',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>A plan with two or more implementers is reviewed in Plannotator before anything starts; a single task is stated in chat and starts. Reviewing every plan, and also reviewing the landed diff, were considered too heavy for small jobs.</>,
+    },
+    {
+      title: 'The orchestrator keeps the graphify map fresh',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>It reads <code>graphify-out/</code> when planning and runs <code>graphify update .</code>, which is local and uses no model, after each batch. A first build can send documents to a model, so it happens only when the user asks.</>,
     },
     {
       title: 'The NAS stack runs as one service',
@@ -90,7 +138,7 @@ column heading to sort.
       title: 'One question at a time for decisions',
       area: 'Agent',
       status: 'Adopted',
-      why: <>A decision that is the user's to make is asked in the chat as "Q1 of N", with an options table and a recommendation, and confirmed before the next one. A summary and a final go come before anything happens, and each decision is saved to Basic Memory. Choices with an obvious default skip the question.</>,
+      why: <>A decision that is the user's to make is asked in the chat as "Q1 of N", with an options table and a recommendation, and confirmed before the next one. A summary and a final go come before anything happens, and each decision is saved to Basic Memory, or to this page when it is about cardea itself. Choices with an obvious default skip the question.</>,
     },
     {
       title: 'One retrieval order for every lookup',
@@ -103,6 +151,12 @@ column heading to sort.
       area: 'Notes',
       status: 'Adopted',
       why: <>Every project in <code>kb/</code> has the same four folders: plans, areas, resources and archive. One question picks the folder, so an agent always knows where a note goes. The kind of note (decision, constraint, gotcha) is a property rather than a folder, so Obsidian views can list them across every project. Steph Ango's flat vault, ACCESS and Johnny.Decimal were considered.</>,
+    },
+    {
+      title: 'Plain PARA folder names',
+      area: 'Notes',
+      status: 'Adopted',
+      why: <>The folders are <code>plans/</code>, <code>areas/</code>, <code>resources/</code> and <code>archive/</code>, without 1- to 4- prefixes. The only cost is that Obsidian's sidebar sorts them alphabetically. Numbered prefixes were rejected because sidebar order was all they bought.</>,
     },
     {
       title: 'LiteLLM proxy',

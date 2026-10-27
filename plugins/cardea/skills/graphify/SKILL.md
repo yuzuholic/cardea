@@ -19,8 +19,10 @@ full command reference. This note covers how it fits here.
 
 ## Building and updating
 
-- Build once per project with `/graphify .`; it writes `graphify-out/` in the project.
-- After a batch of changes, `/graphify . --update` re-reads only what changed.
+- Build once per project with `/graphify .`, only when the user asks; it writes `graphify-out/`
+  in the project.
+- After a batch of changes, `graphify update .` re-extracts the code locally, with no model. An
+  orchestrator runs it after each batch has landed.
 - `graphify-out/` is generated. Add it to the project's `.gitignore` rather than committing
   it, unless the user says otherwise.
 
