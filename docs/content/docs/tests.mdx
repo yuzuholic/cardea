@@ -17,6 +17,7 @@ stand-in tools where the real ones would install things.
 |---|---|---|
 | `install` | The whole of `install.sh` | expect, python3, curl, git; gum for the gum half |
 | `plugin` | The Cardea plugin and its marketplace | Claude Code |
+| `hooks` | The plugin's four hooks | python3, git, curl |
 | `vendor-skills` | The herdr and graphify skills | herdr, graphify |
 | `nas` | The NAS launcher and the stack it runs | Docker |
 
@@ -49,6 +50,13 @@ if it is.
 Checks that `claude plugin validate` accepts the marketplace and the plugin, and that every
 skill and agent has a name matching its file and a description.
 
+## hooks
+
+Feeds the plugin's hooks the same input Claude Code would send. It checks that secrets and
+badly formed commit messages are blocked and everything else passes quietly, that the web
+reminder shows once per session, and that the session note still works when Basic Memory is
+unreachable. A small fake NAS stands in for Basic Memory.
+
 ## vendor-skills
 
 Runs `scripts/vendor-skills.sh` into a scratch folder and checks that both skills come out
@@ -74,6 +82,7 @@ Builds the launcher image, then checks:
 |---|---|---|
 | `install` | Ubuntu | `tests/install.sh`, with expect from apt and gum 2.0.2 from its release. Ubuntu's `sh` is dash, which keeps `install.sh` to plain POSIX shell. |
 | `plugin` | Ubuntu | `tests/plugin.sh`, with Claude Code 2.1.296 from npm |
+| `hooks` | Ubuntu | `tests/hooks.sh` |
 | `vendor-skills` | macOS | `tests/vendor-skills.sh`, with herdr from Homebrew and graphify 0.9.88 from uv |
 | `nas` | Ubuntu | `tests/nas.sh` |
 | `docs` | Ubuntu | Builds this site under `/cardea`, the way GitHub Pages serves it |

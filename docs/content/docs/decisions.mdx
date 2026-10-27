@@ -51,6 +51,12 @@ column heading to sort.
       why: <>Langfuse v4 is six services and five volumes. It was copied from the official v4.70.0 file and trimmed, not written from memory, and every insecure default was removed.</>,
     },
     {
+      title: 'Two agent types: orchestrator and implementer',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>The planning and the review happen on Opus, where they matter; the bulk of the edits run cheaply on Sonnet at low effort, because the brief already carries the thinking. Inside herdr each implementer gets its own pane, so every one of them stays visible and you can step in.</>,
+    },
+    {
       title: 'The NAS stack runs as one service',
       area: 'NAS',
       status: 'Adopted',
@@ -73,6 +79,30 @@ column heading to sort.
       area: 'NAS',
       status: 'Rejected',
       why: <>Running a compose file straight from a registry needs Docker Compose 2.34 or later, and the NAS has 2.32.3.</>,
+    },
+    {
+      title: 'Hooks enforce the rules that matter',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>Rules in <code>CLAUDE.md</code> are advice. Keeping secrets out of the session and keeping commit messages to <code>&lt;type&gt;: &lt;subject&gt;</code> matter enough to be checked by the plugin's hooks before the tool runs. Every hook lets the call through if it fails, and none of them approves anything, so the usual permission prompts still apply.</>,
+    },
+    {
+      title: 'One question at a time for decisions',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>A decision that is the user's to make is asked in the chat as "Q1 of N", with an options table and a recommendation, and confirmed before the next one. A summary and a final go come before anything happens, and each decision is saved to Basic Memory. Choices with an obvious default skip the question.</>,
+    },
+    {
+      title: 'One retrieval order for every lookup',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>Agents check the cheapest and most authoritative source first, and the web and the user come last. When a lookup took real digging, the answer is written back to Basic Memory so the next one is cheap. The order lives in the <code>retrieval-order</code> skill, and <code>CLAUDE.md</code> sends every search through it.</>,
+    },
+    {
+      title: 'PARA inside each notes project',
+      area: 'Notes',
+      status: 'Adopted',
+      why: <>Every project in <code>kb/</code> has the same four folders: plans, areas, resources and archive. One question picks the folder, so an agent always knows where a note goes. The kind of note (decision, constraint, gotcha) is a property rather than a folder, so Obsidian views can list them across every project. Steph Ango's flat vault, ACCESS and Johnny.Decimal were considered.</>,
     },
     {
       title: 'LiteLLM proxy',

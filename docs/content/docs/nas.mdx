@@ -132,9 +132,18 @@ answers.
 
 ## Basic Memory
 
-The notes are plain markdown in `kb/`, beside the compose file. The search index is SQLite,
-kept in the `basic_memory_data` volume instead, because SQLite on an SMB share corrupts. The
-index can be rebuilt from the markdown.
+The notes are plain markdown in `kb/`, beside the compose file. Every top-level folder in
+`kb/` is one Basic Memory project: today `aletheia` (the default) and `homelab`. Basic Memory
+registers each folder as a project every time it starts, so a new project is a new folder
+and a restart:
+
+```sh
+mkdir kb/newproject
+sudo docker restart basic-memory
+```
+
+The search index is SQLite, kept in the `basic_memory_home` volume instead, because SQLite on
+an SMB share corrupts. The index can be rebuilt from the markdown.
 
 `kb/` must be writable by uid 1000, or Basic Memory starts and then quietly stops serving:
 
@@ -142,11 +151,39 @@ index can be rebuilt from the markdown.
 sudo chown -R 1000:1000 kb
 ```
 
-Register each project once:
+### How notes are organised
 
-```sh
-sudo docker exec basic-memory basic-memory project create homelab /app/kb/homelab
+Every project has the same four folders, after the PARA method. One question picks the folder:
+
+| Folder | Holds | Ask |
+|---|---|---|
+| `1-plans/<plan>/` | Work with an end, such as a feature or a migration | Does it finish? |
+| `2-areas/<area>/` | Lasting parts of the project: decisions, constraints, gotchas, how it works | Is it part of the project for good? |
+| `3-resources/` | Outside material: a library, an API, research | Did someone else make it? |
+| `4-archive/` | Finished plans and replaced notes, kept for their history | Is it done or replaced? |
+
+What kind of note it is goes in its properties, not its folder, so Obsidian can list every
+decision or gotcha across all projects:
+
+```markdown
+---
+type: decision      # decision, constraint, gotcha, reference or plan
+status: accepted    # decisions only: proposed, accepted or superseded
+date: 2026-10-27
+---
+# Use GRDB for offline storage
+
+## Observations
+- [decision] GRDB for the local database #database
+
+## Relations
+- constrained_by [[The app works offline first]]
 ```
+
+A note like that one lives at `aletheia/2-areas/database/Use GRDB for offline storage.md`.
+Basic Memory reads the `## Observations` and `## Relations` sections, and the links also draw
+Obsidian's graph. The `basic-memory` skill in the Cardea plugin has the full rules agents
+follow.
 
 ## Obsidian
 

@@ -77,21 +77,29 @@ claude plugin marketplace add yuzuholic/cardea
 claude plugin install cardea@cardea
 ```
 
-**18 skills**
+**19 skills**
 
 | For | Skills |
 |---|---|
 | The self-hosted stack | `basic-memory`, `langfuse`, `obsidian`, `plannotator`, `serena`, `graphify` |
+| Looking things up | `retrieval-order` |
 | iOS | `driving-ios-simulator-with-axe`, `rendering-swiftui-previews`, `sim-clone-restore`, `grdb`, `aletheia-conventions` |
 | Reviews and releases | `panel`, `comment-audit`, `pre-commit-audit`, `semantic-commit`, `local-merge`, `release-changelog` |
 | Recommendations | `recsys` |
 
-**3 agents**: the design panel's UX designer, average chud and power user. The `panel` skill
-runs all three on a question at once and merges their verdicts.
+**5 agents**: the design panel's UX designer, average chud and power user, which the `panel`
+skill runs at once and merges into one verdict; and an orchestrator and an implementer for
+splitting bigger jobs. The orchestrator plans on Opus and hands each piece to an implementer
+on Sonnet, in its own [herdr](https://github.com/ogulcancelik/herdr) pane when there is one.
+
+**4 hooks**: a note at the start of each session on where to look things up, a block on
+reading secrets such as `.env` and private keys, a check that commit messages are
+`<type>: <subject>`, and a one-time reminder to check notes and code before the web.
 
 Skills load when a task calls for them, not in every session. `install.sh` installs the
-plugin from your checkout, which Claude Code reads in place: an edited skill takes effect at
-the next session or after `/reload-plugins`.
+plugin from your checkout. Claude Code keeps its own copy, so after editing a skill or hook
+here, refresh it and start a new session: rerun `./install.sh`, which updates every plugin,
+or for a quick refresh run `claude plugin update cardea@cardea`.
 
 ## What's in the stack
 
@@ -131,6 +139,7 @@ Each test is one script: `sh tests/<name>.sh`. CI runs them all, plus a docs bui
 | Test | What it guards | Needs |
 |---|---|---|
 | `plugin` | The marketplace and plugin validate, and every skill and agent has a name and description. | Claude Code |
+| `hooks` | Secrets and badly formed commit messages are blocked, everything else passes, and the session note copes with the NAS being down. | python3, git |
 | `vendor-skills` | Both vendored skills are generated, a rerun replaces them cleanly, and your `CLAUDE.md` is never touched. | herdr, graphify |
 | `nas` | The launcher builds, missing secrets are named, the stack renders with the right paths, and it really starts, picks up `.env` changes and stops. | Docker |
 | `install` | `install.sh` end to end against stand-in tools and a stand-in NAS: every prompt case, `--no-prompt`, `--check`, and piping from curl, with and without gum. | expect, python3 |

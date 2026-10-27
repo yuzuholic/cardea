@@ -15,7 +15,7 @@ leaves everything else to you.
 | MCP servers | User scope in `~/.claude.json` | `claude mcp add-json --scope user` |
 | <Tool icon="plannotator.png">Plannotator</Tool> | Plugin, plus the `plannotator` binary | Plugin marketplace, binary installer |
 | <Tool icon="langfuse.svg">Langfuse tracing</Tool> | Plugin | Plugin marketplace, configured from `.env` |
-| <Tool icon="claude.svg" mono>Cardea plugin</Tool> | Plugin, read from this checkout | `claude plugin install` from the repo |
+| <Tool icon="claude.svg" mono>Cardea plugin</Tool> | Plugin, a copy in `~/.claude/plugins/cache/` | `claude plugin install` from the repo |
 | Five more plugins | Plugins | Their own marketplaces |
 | <Tool icon="herdr.svg">herdr</Tool> and graphify skills | `~/.claude/skills/herdr/`, `~/.claude/skills/graphify/` | `scripts/vendor-skills.sh` |
 
@@ -63,9 +63,16 @@ for them, so unlike the rules in `CLAUDE.md` they cost nothing until they are us
 | For | Skills |
 |---|---|
 | The self-hosted stack | `basic-memory`, `langfuse`, `obsidian`, `plannotator`, `serena`, `graphify` |
+| Looking things up | `retrieval-order` |
 | iOS | `driving-ios-simulator-with-axe`, `rendering-swiftui-previews`, `sim-clone-restore`, `grdb`, `aletheia-conventions` |
 | Reviews and releases | `panel`, `comment-audit`, `pre-commit-audit`, `semantic-commit`, `local-merge`, `release-changelog` |
 | Recommendations | `recsys` |
+
+`retrieval-order` sets where an agent looks before it asks: the session, then the rules and
+memory, Basic Memory, the active plan, graphify, Serena and the code, git history, tests and
+builds, skills and offline docs, the web, and you last. Notes and history answer why
+something is the way it is; the code and live results answer what it is now, and win when a
+note is out of date.
 
 Three agents make up the design panel: a UX designer, the average chud and a power user. The
 `panel` skill puts a question to all three at once and merges their verdicts into one
@@ -74,8 +81,14 @@ recommendation.
 `aletheia-conventions` holds the Aletheia app's coding rules. As a skill, they apply when
 work on that app picks it up, not in every session.
 
-`install.sh` installs the plugin from your checkout. Claude Code reads it in place, so an
-edited skill takes effect at the next session, or straight away after `/reload-plugins`.
+`install.sh` installs the plugin from your checkout. Claude Code keeps its own copy, in
+`~/.claude/plugins/cache/cardea/cardea/<version>/`, so an edit in the repo does nothing until
+you refresh that copy and start a new session. Rerunning `./install.sh` updates the Cardea
+plugin and every marketplace plugin. For a quick refresh after an edit, update just this one:
+
+```sh
+claude plugin update cardea@cardea
+```
 
 Anyone can install it without the rest of Cardea:
 
@@ -84,10 +97,61 @@ claude plugin marketplace add yuzuholic/cardea
 claude plugin install cardea@cardea
 ```
 
+## Orchestrator and implementer
+
+For a job with several parts, the plugin has two more agents. The orchestrator plans and
+checks; implementers make the changes. The orchestrator never edits a file, and an
+implementer never starts another agent.
+
+| Agent | Started by | Model | Effort |
+|---|---|---|---|
+| `cardea:orchestrator` | you | Opus 5.5 | medium |
+| `cardea:implementer` | you | Opus 5.5 | medium |
+| `cardea:implementer` | the orchestrator | Sonnet 5.5 | low |
+
+Start either one with its effort spelled out:
+
+```sh
+claude --agent cardea:orchestrator --effort medium
+claude --agent cardea:implementer --effort medium
+```
+
+The orchestrator reads the code, tells you its plan, and splits the work into tasks one
+implementer can finish alone. Each implementer gets a brief with the goal, the files, the
+limits and the check that proves it worked. It makes the change, runs the check and reports
+what it changed, what it checked and what it left. The orchestrator reviews each report and
+then reports to you.
+
+**Inside herdr**, every implementer gets a pane of its own beside yours, so you can watch it
+work and step in. The orchestrator opens the pane without taking your focus, starts the
+implementer in it, sends the brief and reads the result back. If a pane stops on a question
+(trusting a folder, a permission, anything else), the orchestrator asks you; it never answers
+for you. Once you've seen the results, it closes the panes it opened.
+
+**Outside herdr**, it starts implementers as ordinary subagents instead, on Sonnet at low
+effort.
+
+## Hooks
+
+The plugin also ships four hooks. Two can block a tool call; the other two only add a note.
+If a hook fails for any reason, the call goes ahead. None of them ever approves a call, so
+your usual permission prompts still apply.
+
+| Hook | When | What it does |
+|---|---|---|
+| Session note | A session starts, resumes or is compacted | Reminds Claude of the lookup order, names the repo's Basic Memory project (the repo's folder name), says whether a graphify map exists, and lists up to five notes from the last week. If the NAS doesn't answer within 1.5 seconds, the notes are left out. |
+| Secrets | Before reading, searching, editing or running a command | Blocks `.env` files and private keys (`id_rsa`, `*.pem`, `*.key`, `*.p12`, `*.p8`), saying secrets go through environment variables only. `.env.example`, `.sample` and `.template` files and `*.pub` keys are fine. |
+| Commit message | Before a `git` command | Blocks a commit whose message isn't `<type>: <subject>`: lowercase, no full stop, under 72 characters, no body and no trailers such as `Co-Authored-By`. It lists what's wrong. If the message can't be read, for example because an editor opens, the commit goes ahead. |
+| Web nudge | The first web search or fetch in a session | Reminds Claude to check notes, code and history first. It never blocks. |
+
+The secrets check on commands is a scan of the words in the command, so it misses some
+routes: a variable holding the path, `git show HEAD:.env`, or `grep -r` across a folder. It
+stops accidents, not someone trying to get round it.
+
 ## Marketplace plugins
 
-The script installs these from their own marketplaces, and switches back on any that were
-turned off.
+The script installs these from their own marketplaces. On a rerun it switches back on any
+that were turned off and updates each one.
 
 | Plugin | What it adds |
 |---|---|
@@ -101,6 +165,23 @@ herdr and graphify each ship a skill of their own. `scripts/vendor-skills.sh` ge
 from the installed versions on every run, so they always match. graphify's installer would
 also edit `CLAUDE.md`; the script runs it against a scratch folder so the real one is never
 touched.
+
+## Decisions you make
+
+When a decision is yours to make, Claude asks in the chat, one question at a time, following
+the rules in `claude/CLAUDE.md`:
+
+1. It explains the problem simply and lists the questions coming.
+2. Each question comes as "Q1 of 3", with a table of options and what is good and not good
+   about each. One is marked **(recommended)**, and it names the cheapest option that has no
+   real downside.
+3. It confirms your answer in one line and waits for "next". "Go with yours" accepts the
+   recommendation.
+4. At the end it sums up every decision and waits for your go before acting.
+5. Each decision is saved to Basic Memory.
+
+Choices with an obvious default don't get a question; Claude goes ahead and mentions it in
+one line.
 
 ## Your subscription, not an API key
 
