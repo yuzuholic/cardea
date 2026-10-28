@@ -65,5 +65,5 @@ holding real data.
 2. Run the script. It takes the full test run's time; run it in the foreground with a long timeout
    or in the background and wait for it.
 3. On failure: show the failing lines from the log verbatim; nothing was merged.
-4. On success: report the new `main` commit, the test count, and clean up the worktree and any
-   simulator made for the task.
+4. On success: report the new `main` commit and the test count, then run the `post-merge-sweep`
+   skill to clean up the worktree, the simulator made for the task and any other leftovers.

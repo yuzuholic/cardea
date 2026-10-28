@@ -65,7 +65,7 @@ for them, so unlike the rules in `CLAUDE.md` they cost nothing until they are us
 | The self-hosted stack | `basic-memory`, `langfuse`, `obsidian`, `plannotator`, `serena`, `graphify` |
 | Looking things up | `retrieval-order` |
 | iOS | `driving-ios-simulator-with-axe`, `rendering-swiftui-previews`, `sim-clone-restore`, `grdb`, `aletheia-conventions` |
-| Reviews and releases | `panel`, `comment-audit`, `pre-commit-audit`, `semantic-commit`, `local-merge`, `release-changelog` |
+| Reviews and releases | `panel`, `comment-audit`, `pre-commit-audit`, `semantic-commit`, `local-merge`, `post-merge-sweep`, `release-changelog` |
 | Recommendations | `recsys` |
 
 `retrieval-order` sets where an agent looks before it asks: the session, then the rules and
@@ -100,8 +100,9 @@ claude plugin install cardea@cardea
 ## Orchestrator and implementer
 
 For a job with several parts, the plugin has two more agents. The orchestrator plans and
-checks; implementers make the changes. The orchestrator never edits a file, and an
-implementer never starts another agent.
+checks; implementers make the changes. The orchestrator never writes feature or bug-fix code,
+only quick one-off edits such as a convention or a note, and an implementer never starts
+another agent. Both edit files with the Edit and Write tools, never with scripts.
 
 | Agent | Started by | Model | Effort |
 |---|---|---|---|

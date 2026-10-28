@@ -12,12 +12,18 @@ markdown Basic Memory reads and writes. Edits on either side are the same files;
 ## What this means for you
 
 - You do not drive Obsidian. To change notes, use the Basic Memory tools (see the
-  `basic-memory` skill); the user sees the result in Obsidian straight away.
-- Write so the note reads well there: a title the user would search for, short sections,
-  `[[Wikilinks]]` to related notes, and plain markdown. No HTML, no tool-specific syntax.
+  `basic-memory` skill); the user sees the result in Obsidian straight away. Never edit or
+  rename `kb/` files directly over SMB: with the server watching, that has blanked notes.
+- Write every note to the templates in the `basic-memory` skill, so it reads as a wiki page
+  there. No HTML.
+- The vault is set up for that shape. A CSS snippet (`kb/.obsidian/snippets/hide-bm-properties.css`)
+  hides the `title` and `permalink` properties, and the inline title is off, so the `# H1` is
+  the only title shown. The Automatic Table of Contents plugin renders `toc` code blocks
+  (from level 2, leaving out Key facts and Relations); without it they show as empty code.
+  Mermaid diagrams and `> [!warning]` / `> [!note]` callouts render natively.
 - `kb/.obsidian/` holds Obsidian's own settings. Never write to it.
 - To point the user at a note, give its title or path inside the vault, for example
-  `aletheia/areas/database/Use GRDB for offline storage.md`.
+  `aletheia/areas/database/Use GRDB for Offline Storage.md`.
 
 ## Access
 

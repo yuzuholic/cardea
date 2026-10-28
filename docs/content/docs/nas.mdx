@@ -164,27 +164,46 @@ Every project has the same four folders, after the PARA method. One question pic
 | `archive/` | Finished plans and replaced notes, kept for their history | Is it done or replaced? |
 
 What kind of note it is goes in its properties, not its folder, so Obsidian can list every
-decision or gotcha across all projects:
+decision or gotcha across all projects. Each kind (decision, reference, gotcha, constraint,
+plan and area) has its own template, and every note reads as a wiki page: a title, a
+`Part of` link to its area, a short lead and the body. The lines Basic Memory indexes sit at
+the bottom, below a rule:
 
 ```markdown
 ---
-type: decision      # decision, constraint, gotcha, reference or plan
-status: accepted    # decisions only: proposed, accepted or superseded
-date: 2026-10-27
+type: decision
+status: accepted
+tags: [database]
+aliases: []
+updated: 2026-10-28
 ---
-# Use GRDB for offline storage
+# Use GRDB for Offline Storage
 
-## Observations
-- [decision] GRDB for the local database #database
+Part of [[Database]]
+
+The app keeps its library in SQLite through GRDB, so it works fully offline.
+
+## Context
+...
+
+---
+# Basic Memory
+
+## Key facts
+- [decision] GRDB for the local database
 
 ## Relations
-- constrained_by [[The app works offline first]]
+- part_of [[Database]]
 ```
 
-A note like that one lives at `aletheia/areas/database/Use GRDB for offline storage.md`.
-Basic Memory reads the `## Observations` and `## Relations` sections, and the links also draw
-Obsidian's graph. The `basic-memory` skill in the Cardea plugin has the full rules agents
-follow.
+A note like that one lives at `aletheia/areas/database/Use GRDB for Offline Storage.md`.
+Basic Memory indexes the key facts and relations, links in the prose become `links_to`, and
+all of them draw Obsidian's graph. Each area has a portal page named after it, and each
+project a front page linking every area. The `basic-memory` skill in the Cardea plugin has
+all six templates and the rules agents follow.
+
+In Obsidian, a CSS snippet hides the `title` and `permalink` properties, the inline title is
+off, and the Automatic Table of Contents plugin renders the `toc` code blocks.
 
 ## Obsidian
 

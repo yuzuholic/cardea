@@ -43,6 +43,47 @@ sips -Z 900 /abs/out/dir/out.png --out /abs/out/dir/out-small.png   # then Read 
 | Light mode when the app is dark | Add `.preferredColorScheme(.dark)` in the preview |
 | Grey placeholders instead of art | `UIImage(contentsOfFile: "/abs/host/path.jpg")` works in previews. Copy real images (e.g. from a simulator's Kingfisher cache) to a scratch folder and load by path. Never commit them as assets |
 
+## When RenderPreview Can't Run
+
+If `RenderPreview` needs approval and the user is away from the Mac, render the draft from a
+Swift Testing test instead. Work in a worktree on the task's own clone of the golden simulator
+(see `sim-clone-restore`), never in the user's checkout.
+
+1. Add a throwaway test to the app's test target that renders the draft with `ImageRenderer`
+   and writes a PNG to the scratchpad:
+
+   ```swift
+   import SwiftUI
+   import Testing
+   @testable import MyApp
+
+   @MainActor
+   struct DraftRender {
+       @Test func featureDraftA() throws {
+           let renderer = ImageRenderer(content: FeatureDraftA()
+               .frame(width: 402)
+               .preferredColorScheme(.dark))
+           renderer.scale = 3
+           let png = try #require(renderer.uiImage?.pngData())
+           try png.write(to: URL(fileURLWithPath: "/abs/scratchpad/feature-draft-a.png"))
+       }
+   }
+   ```
+
+2. Run only that test on the clone:
+
+   ```bash
+   xcodebuild test -project MyApp.xcodeproj -scheme MyApp -destination "id=<clone udid>" \
+       -only-testing:MyAppTests/DraftRender -derivedDataPath .context/dd \
+       -parallel-testing-enabled NO
+   ```
+
+3. Crop to the part worth showing, then read it:
+   `sips -c <height> <width> --cropOffset <y> 0 in.png --out out.png`.
+
+`ScrollView` and `LazyVStack` render empty in `ImageRenderer`. In the worktree copy only, swap
+them for `VStack`. The test and those swaps go away with the worktree.
+
 ## Draft Workflow
 
 1. Write throwaway `FeatureDrafts.swift` in the app target, wrapped in `#if DEBUG`. Use one named `#Preview` per direction, built from the real components, theme tokens and a mock data struct.

@@ -57,6 +57,12 @@ column heading to sort.
       why: <>The planning and the review happen on Opus, where they matter; the bulk of the edits run cheaply on Sonnet at low effort, because the brief already carries the thinking. Inside herdr each implementer gets its own tab, so every one of them stays visible and you can step in.</>,
     },
     {
+      title: 'The orchestrator edits only one-off, non-product files',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>Features, bug fixes and their data files always go to implementers, but blocking every edit made small changes such as a convention or a note round-trip through a new agent. The orchestrator can now use Edit and Write for those, and hands anything uncertain to an implementer. The line is held by its instructions rather than by a tool block. Agents edit files only with the Edit and Write tools, never with python, sed or heredoc scripts, after an implementer rewrote Swift through a heredoc.</>,
+    },
+    {
       title: 'The orchestrator never blocks on implementers',
       area: 'Agent',
       status: 'Adopted',
@@ -85,6 +91,12 @@ column heading to sort.
       area: 'Agent',
       status: 'Adopted',
       why: <>Once a task has landed, the orchestrator removes its worktree and build data, branch, tab and simulator clone; the user can also close any task by name. Self-closing implementers would delete work before review, and manual cleanup fills the disk.</>,
+    },
+    {
+      title: 'A sweep after every merge',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>Per-task teardown only removes what a session remembers making, so crashed or restarted sessions leave tabs, worktrees, branches, simulators and build data behind. After any merge to main, the <code>post-merge-sweep</code> skill lists what actually exists, removes only what it can tie to a finished task, asks about anything else, and reports the space freed. Remote branches are only deleted when the user agrees. It is one skill so the orchestrator, <code>local-merge</code> and a pull request merge all run the same steps.</>,
     },
     {
       title: 'Serial tests and a disk report for simulators',
@@ -151,6 +163,18 @@ column heading to sort.
       area: 'Notes',
       status: 'Adopted',
       why: <>Every project in <code>kb/</code> has the same four folders: plans, areas, resources and archive. One question picks the folder, so an agent always knows where a note goes. The kind of note (decision, constraint, gotcha) is a property rather than a folder, so Obsidian views can list them across every project. Steph Ango's flat vault, ACCESS and Johnny.Decimal were considered.</>,
+    },
+    {
+      title: 'Notes as wiki pages, one template per kind',
+      area: 'Notes',
+      status: 'Adopted',
+      why: <>Notes are read by the user in Obsidian and by agents through Basic Memory, and the first migrated notes read like database rows. Every note now has a title, a <code>Part of</code> breadcrumb, a short lead and a body from its kind's template (decision, reference, gotcha, constraint, plan or area), with the indexed key facts and typed relations below a rule at the bottom. Links go in the prose, areas get portal pages, and each project has a front page. Each key fact now exists twice, and the vault depends on the Automatic Table of Contents plugin. One universal template, observations as the body, and a pilot with lint checks were considered. The <code>basic-memory</code> skill holds the templates.</>,
+    },
+    {
+      title: 'Title case for note titles',
+      area: 'Notes',
+      status: 'Adopted',
+      why: <>Note titles, and the file names that match them, are in title case in every project: every word capitalised except articles, coordinating conjunctions and short prepositions, unless first, last or after an opening bracket, with each hyphen part capitalised and code names, acronyms and version tags kept as they are. It replaces sentence case, at the user's request, after the Aletheia vault moved to it. The cost is a rule with more exceptions to get right.</>,
     },
     {
       title: 'Plain PARA folder names',
