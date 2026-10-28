@@ -73,6 +73,9 @@ Zero compiler warnings; fix any before going on. Other stacks: the project's lin
 - No temporary code: demo slowdowns, debug overrides, `print(` / `console.log`, draft preview files,
   anything marked `TEMP` (`git diff | grep -n 'TEMP\|print('`).
 - No magic numbers where the project keeps constants or design tokens.
+- Descriptive names. Variables, parameters and functions say what they hold: `seed_vector`, not `v`;
+  `entry`, not `e`; `scores`, not `out`. Single letters only where the domain itself uses them, such as
+  `x`, `y`, `z` for coordinates. Rename in the changed files, and update every caller and test.
 - The project's copy and terminology rules hold for user-facing text.
 - Flag, do not ship silently: any database schema change, new dependency or destructive removal.
 
