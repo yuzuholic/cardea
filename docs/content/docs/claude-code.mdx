@@ -127,6 +127,17 @@ checked and what it left.
 The orchestrator never waits on an implementer in the foreground, so it can answer you while
 they work. A task that changes files alongside others, or builds an app, gets its own git
 worktree and branch; read-only tasks and a lone small change run in your checkout.
+Every task gets a time budget, shown as minutes and a due time (for example "25 min, due
+16:40") in the plan and the brief, and the background wait that tracks the implementer is armed
+with it as its timeout. On an overrun the orchestrator investigates before acting. An
+implementer waiting on a prompt goes to you. One still producing output gets a single extension
+of half its budget and a one-line note to you. One with no new output, or any second overrun,
+is stopped and reported to you with its last output, and you decide. Outside herdr it cannot
+look inside a running subagent, so an overrun goes straight to you. Each batch's final report
+lists budget against actual time per task, and the orchestrator appends those rows to the Basic
+Memory note `plans/<Project> Task Time Estimates.md` (the last 50 tasks, plus rules of thumb by
+kind of task) and reads it when planning. Cardea has no Basic Memory project, so for cardea the
+report is the only record.
 Implementers stage their work and never commit. The orchestrator reviews each one, then lands
 it in your checkout as uncommitted changes, one at a time in the order they finish, under a
 per-repo lock that also keeps orchestrators in other sessions from landing at the same time.

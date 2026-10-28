@@ -69,6 +69,12 @@ column heading to sort.
       why: <>The user should get an answer from the orchestrator at any time. Every wait runs as a background command that wakes it on exit, with no foreground <code>--wait</code>, polling or sleeps.</>,
     },
     {
+      title: 'Every implementer has a time budget',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>An agent that runs long unexpectedly must be investigated, not left running or silently killed. The orchestrator sets a budget for every task, in minutes plus a due time, in the plan and the brief, and arms the background wait with it as its timeout from the start. On an overrun it looks first: an implementer waiting on a prompt goes to the user; one still producing output gets one extension of half its budget and a one-line note; one with no new output, or any second overrun, is stopped and reported with its last output, and the user decides. Outside herdr nothing can look inside a subagent, so an overrun goes straight to the user. Each batch's report lists budget against actual time, and the rows are appended to a Basic Memory note per project (<code>plans/&lt;Project&gt; Task Time Estimates.md</code>, 50 recent rows plus rules of thumb) that the orchestrator reads when planning; cardea has no Basic Memory project, so there the report is the only record. Rejected: implementers estimating their own time (a task that hangs before estimating has no deadline), one fixed budget for all tasks, always asking the user at the deadline, restarting overrunning implementers automatically, extending without limit, and keeping the log only in the repo's git folder (Basic Memory is durable and visible in Obsidian).</>,
+    },
+    {
       title: 'One tab per implementer',
       area: 'Agent',
       status: 'Adopted',

@@ -49,6 +49,18 @@ One question picks the folder:
 - When a decision is replaced, set the old note's `status: superseded`, move it to
   `archive/`, and link the new one to it with `supersedes`.
 
+### Task time estimates
+
+Each project the orchestrator plans for has one reference page, `plans/<Project> Task Time
+Estimates.md` (for example `Aletheia Task Time Estimates`, unique across the vault). It follows
+the reference template and is `part_of` the Plans portal. It holds:
+
+- **Recent tasks:** a table of date, task, kind, budget, actual and outcome, capped at the latest
+  50 rows, oldest dropped first.
+- **Rules of thumb:** a short section by kind of task, which the orchestrator keeps up to date.
+
+The orchestrator writes it once per batch: `write_note` the first time, `edit_note` after that.
+
 ### The system project
 
 The `system/` folder at the vault root holds the project-agnostic rules (`How Notes Are
