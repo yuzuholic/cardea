@@ -107,6 +107,8 @@ confirm. A choice with a clear default goes ahead, mentioned in one line.
 ## Stack
 
 - Primary: Swift / SwiftUI, iOS 18+. Also TypeScript and Go.
+- Web: Vite by default, Astro for content sites. Next.js only for a serious, web-only product
+  that needs it. Package manager: pnpm.
 - Databases in Swift: GRDB. Async: async/await and AsyncStream, not Combine.
 - Tests: Swift Testing.
 
