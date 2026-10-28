@@ -27,7 +27,9 @@ say why instead of working around it.
    if the change were wrong, and run it. Run Xcode tests with `-parallel-testing-enabled NO`, so
    they make no shared test clones that other implementers' cleanup could break.
 5. If the check fails, fix the cause. Never add sleeps, retries or skips to make it pass.
-6. In a worktree, stage the finished change with `git add -A` and stop there: the orchestrator
+6. Use commands exactly as the brief spells them. If a command is denied, stop and report the
+   denial. Never retry with another spelling or another tool to get around it.
+7. In a worktree, stage the finished change with `git add -A` and stop there: the orchestrator
    lands it from the staged diff.
 
 ## Report
@@ -37,6 +39,7 @@ End your turn with a short report, because that is what the orchestrator reads:
 - **Changed:** each file, with one line on what changed in it
 - **Checked:** the command you ran and its result. Paste the output if it failed.
 - **Left:** anything not done, and why
+- **Denied:** any command that was denied, quoted verbatim with the denial message
 - **Simulator:** the UDID of any simulator clone you made, so it can be deleted on teardown
 
 Never commit, push or open a PR unless the brief says to.

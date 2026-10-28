@@ -138,6 +138,14 @@ lists budget against actual time per task, and the orchestrator appends those ro
 Memory note `plans/<Project> Task Time Estimates.md` (the last 50 tasks, plus rules of thumb by
 kind of task) and reads it when planning. Cardea has no Basic Memory project, so for cardea the
 report is the only record.
+An implementer that is blocked or needs something comes first: at the start of every turn the
+orchestrator checks implementer messages and pane states and resolves any blocker before other
+topics, and a blocker that needs you leads its reply. A permission denial goes to you, with the
+options of adding an allow rule for that exact command or approving it in the implementer's own
+tab. The orchestrator never runs the denied command itself, and never answers an approval or
+permission prompt for you. When a command depends on an allow rule, the brief gives its exact
+allow-listed spelling, and a denied implementer reports the denial verbatim instead of retrying
+with another spelling or tool.
 Implementers stage their work and never commit. The orchestrator reviews each one, then lands
 it in your checkout as uncommitted changes, one at a time in the order they finish, under a
 per-repo lock that also keeps orchestrators in other sessions from landing at the same time.

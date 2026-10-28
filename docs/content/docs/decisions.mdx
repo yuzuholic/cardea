@@ -69,6 +69,18 @@ column heading to sort.
       why: <>The user should get an answer from the orchestrator at any time. Every wait runs as a background command that wakes it on exit, with no foreground <code>--wait</code>, polling or sleeps.</>,
     },
     {
+      title: 'Unblocking implementers comes first',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>An implementer that is blocked or needs something (a question, a missing input, a permission denial, a failed step) is the orchestrator's highest priority, even mid-conversation with the user. At the start of every turn it checks implementer messages and pane states and resolves any blocker before other topics; a blocker that needs the user leads the reply. Approval and permission prompts are still never answered on the user's behalf. Implementers had sat idle because their questions arrived while the orchestrator was talking the user through other work: a missing demo seed, a brief naming a setting that does not exist, and a permission denial at merge.</>,
+    },
+    {
+      title: 'Permission denials go to the user',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>An implementer's permission denial is brought to the user with the options: add an allow rule for that exact command, or approve it in the implementer's own tab. The orchestrator never runs the denied command itself, since that would bypass the user's permission decision. An approval the user gives the orchestrator reaches an implementer as a message from another agent, which the auto-mode permission check rightly does not treat as the user's permission. When a command depends on an allow rule, the brief gives its exact allow-listed spelling; a denied implementer reports the denial verbatim and never retries with another spelling or tool. Allow rules for a project's sanctioned commands live in its git-ignored <code>.claude/settings.local.json</code> and are added only with the user's explicit yes.</>,
+    },
+    {
       title: 'Every implementer has a time budget',
       area: 'Agent',
       status: 'Adopted',

@@ -34,6 +34,16 @@ in the foreground, no polling, no sleeps. Every wait below runs as a background 
 their timeout. The landing lock (`lockf`) waits without one. Outside herdr, the background timer
 is a deadline, not a sleep that papers over ordering. Between wake-ups, answer the user.
 
+## Unblock first
+
+Your main job is orchestrating other agents, so an implementer that is blocked or needs something
+(a question, a missing input, a permission denial, a failed step) is your highest priority, even
+mid-conversation with the user. At the start of every turn, check for implementer messages and
+pane states: `herdr agent list`, any background waits that have finished, and, outside herdr, any
+subagent reports. Resolve every blocker before replying on other topics: answer the question,
+send the missing input, or bring the user a decision only they can make. When a blocker needs the
+user, the reply leads with it. Never answer an approval or permission prompt on the user's behalf.
+
 ## Plan
 
 1. If the project has a Basic Memory project, read `plans/<Project> Task Time Estimates.md` first
@@ -70,8 +80,9 @@ The implementer knows only what the brief says. Each brief has:
 - the files to change and the code to read first
 - constraints: what not to touch, conventions to match, decisions already made
 - the one check that proves it works, and how to run it
+- for any command that depends on an allow rule, its exact allow-listed spelling
 - the time budget and due time
-- what to report: files changed, the check's output, anything left undone
+- what to report: files changed, the check's output, anything left undone, any denied command
 
 A worktree starts from `HEAD`, so the user's uncommitted changes are not in it. Say so in the
 brief when the task depends on them.
@@ -121,6 +132,10 @@ Every herdr error exits 1, so the exit code cannot tell outcomes apart. Branch o
 `agent start` returning `agent_not_ready` also means a prompt (folder trust on a first start in that
 directory): read it with `herdr agent read`, then ask the user. Never answer an approval yourself.
 
+When an implementer reports a permission denial, bring it to the user with two options: add an
+allow rule for that exact command, or approve it in the implementer's own tab. Never run the denied
+command yourself: that bypasses the user's permission decision.
+
 ## Overruns
 
 When a wait returns a timeout, investigate before acting. Read the agent's status and its recent
@@ -147,7 +162,8 @@ parallel.
 Subagents have no timeout, so start a background timer command for each budget as its deadline.
 It is a deadline, not a delay to fix ordering. When it fires and the subagent has not reported,
 tell the user straight away. There is no silent extension: you cannot see inside a running
-subagent.
+subagent. A subagent that reports a permission denial is handled as above: bring it to the user,
+and never run the denied command yourself.
 
 ## Review and land
 
