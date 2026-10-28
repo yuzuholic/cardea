@@ -87,7 +87,8 @@ the herdr skill's rules: keep the user's focus where it is, parse IDs from the J
 the tabs you create.
 
 1. Open a tab for the task in the current workspace, in its worktree (or the user's checkout),
-   without taking focus. The new pane ID is `.result.root_pane.pane_id`; keep `.result.tab` too.
+   without taking focus. The new pane ID is `.result.root_pane.pane_id`; keep the tab ID,
+   `.result.tab.tab_id`, too.
    `herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "<dir>" --label impl-<task> --no-focus`
 2. Start the implementer there under a unique name, `impl-<task>` (lowercase, at most 32 chars):
    `herdr agent start impl-<task> --kind claude --pane <pane_id> -- --agent cardea:implementer --model claude-sonnet-5-5 --effort low`
@@ -99,7 +100,9 @@ the tabs you create.
 If `agent start` returns `agent_not_ready` or a wait returns `blocked`, the implementer is at a
 prompt: folder trust on a first start in that directory, a permission, or a question. Read it with
 `herdr agent read`, then ask the user. Never answer an approval yourself. A wait that fails doesn't
-prove the brief was lost; read the pane before sending anything again.
+prove the brief was lost: herdr returns `agent_prompt_stalled` when it sees no `working` state
+within 5 seconds of submitting, even though the brief may have arrived. Read the pane before
+sending anything again.
 
 ## Fallback outside herdr
 

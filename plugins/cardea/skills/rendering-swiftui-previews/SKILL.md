@@ -46,8 +46,9 @@ sips -Z 900 /abs/out/dir/out.png --out /abs/out/dir/out-small.png   # then Read 
 ## When RenderPreview Can't Run
 
 If `RenderPreview` needs approval and the user is away from the Mac, render the draft from a
-Swift Testing test instead. Work in a worktree on the task's own clone of the golden simulator
-(see `sim-clone-restore`), never in the user's checkout.
+Swift Testing test instead. Work in a worktree on the task's own simulator, never in the user's
+checkout. A fresh `xcrun simctl create` device is enough when the draft needs no real app data;
+clone the golden simulator (see `sim-clone-restore`) only when it does.
 
 1. Add a throwaway test to the app's test target that renders the draft with `ImageRenderer`
    and writes a PNG to the scratchpad:
@@ -70,19 +71,26 @@ Swift Testing test instead. Work in a worktree on the task's own clone of the go
    }
    ```
 
-2. Run only that test on the clone:
+2. Run only that test on the task's simulator:
 
    ```bash
-   xcodebuild test -project MyApp.xcodeproj -scheme MyApp -destination "id=<clone udid>" \
+   xcodebuild test -project MyApp.xcodeproj -scheme MyApp -destination "id=<simulator udid>" \
        -only-testing:MyAppTests/DraftRender -derivedDataPath .context/dd \
        -parallel-testing-enabled NO
    ```
 
-3. Crop to the part worth showing, then read it:
-   `sips -c <height> <width> --cropOffset <y> 0 in.png --out out.png`.
+   `-scheme` is the app scheme and the `-only-testing:` prefix is the test target name. They
+   usually differ (scheme `aletheia`, test target `aletheiaTests`), and the test target often
+   has no scheme of its own.
 
-`ScrollView` and `LazyVStack` render empty in `ImageRenderer`. In the worktree copy only, swap
-them for `VStack`. The test and those swaps go away with the worktree.
+3. Crop to the part worth showing, then read it:
+   `sips -c <height> <width> --cropOffset <y> <x> in.png --out out.png`. Sizes and offsets are
+   in pixels, so at `renderer.scale = 3` multiply points by 3. The order is height then width,
+   and y offset then x offset.
+
+`ScrollView` and `LazyVStack` render empty in `ImageRenderer`: backgrounds still draw, but their
+content does not. In the worktree copy only, swap them for `VStack`. The test and those swaps
+go away with the worktree.
 
 ## Draft Workflow
 

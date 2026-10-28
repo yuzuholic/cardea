@@ -133,8 +133,9 @@ per-repo lock that also keeps orchestrators in other sessions from landing at th
 If a change no longer applies, or its check fails in your checkout, it stops and asks you.
 After landing, it removes the worktree, its build data, the branch, the tab and any simulator
 clone the task made. Saying `close impl-<task>` does the same at any time. When the batch is
-done, it deletes unavailable simulators, reports the disk space freed, and refreshes the
-graphify map.
+done and any task used a simulator, it deletes unavailable simulators and reports the disk space
+freed. It also refreshes the graphify map. Once the work is merged to main, it runs the
+`post-merge-sweep` skill, which also clears what crashed or restarted sessions left behind.
 
 **Inside herdr**, every implementer gets a tab of its own in your workspace, named
 `impl-<task>`, so you can watch it work and step in. The orchestrator opens the tab without

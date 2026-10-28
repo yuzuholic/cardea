@@ -191,6 +191,8 @@ The app keeps its library in SQLite through GRDB, so it works fully offline.
 
 ## Key facts
 - [decision] GRDB for the local database
+- [rule] Offline storage goes through GRDB, never raw SQLite calls
+- [fact] The offline store is a single GRDB database file on device
 
 ## Relations
 - part_of [[Database]]

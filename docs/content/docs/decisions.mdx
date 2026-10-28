@@ -96,13 +96,13 @@ column heading to sort.
       title: 'A sweep after every merge',
       area: 'Agent',
       status: 'Adopted',
-      why: <>Per-task teardown only removes what a session remembers making, so crashed or restarted sessions leave tabs, worktrees, branches, simulators and build data behind. After any merge to main, the <code>post-merge-sweep</code> skill lists what actually exists, removes only what it can tie to a finished task, asks about anything else, and reports the space freed. Remote branches are only deleted when the user agrees. It is one skill so the orchestrator, <code>local-merge</code> and a pull request merge all run the same steps.</>,
+      why: <>Per-task teardown only removes what a session remembers making, so crashed or restarted sessions leave tabs, worktrees, branches, simulators and build data behind. After any merge to main, the <code>post-merge-sweep</code> skill lists what actually exists, removes only what it can tie to a finished task, asks about anything else, and treats an item as in use when any running Claude session's working directory is inside it or its transcript (or its subagents' transcripts) mentions it. Only items no running session uses and that tie to a finished task are removed; a dry run showed that a new branch with no commits looked merged. The skill reports the space freed. Remote branches are only deleted when the user agrees. It is one skill so the orchestrator, <code>local-merge</code> and a pull request merge all run the same steps.</>,
     },
     {
       title: 'Serial tests and a disk report for simulators',
       area: 'Agent',
       status: 'Adopted',
-      why: <>Each task deletes only its own simulator clone. Implementers run tests with <code>-parallel-testing-enabled NO</code>, so no shared test clones exist for one task's cleanup to break another's run. When a batch ends, unavailable simulators are deleted and the freed space is reported.</>,
+      why: <>Each task deletes only its own simulator clone. Implementers run tests with <code>-parallel-testing-enabled NO</code>, so no shared test clones exist for one task's cleanup to break another's run. When a batch that used a simulator ends, unavailable simulators are deleted and the freed space is reported.</>,
     },
     {
       title: 'Plannotator for plans with several implementers',
