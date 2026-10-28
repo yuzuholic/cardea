@@ -161,8 +161,14 @@ column heading to sort.
     {
       title: 'PARA inside each notes project',
       area: 'Notes',
+      status: 'Replaced',
+      why: <>Every project in <code>kb/</code> has the same four folders: plans, areas, resources and archive. One question picks the folder, so an agent always knows where a note goes. The kind of note (decision, constraint, gotcha) is a property rather than a folder, so Obsidian views can list them across every project. Steph Ango's flat vault, ACCESS and Johnny.Decimal were considered. Replaced by "Apps, research, plans and archive in each project".</>,
+    },
+    {
+      title: 'Apps, research, plans and archive in each project',
+      area: 'Notes',
       status: 'Adopted',
-      why: <>Every project in <code>kb/</code> has the same four folders: plans, areas, resources and archive. One question picks the folder, so an agent always knows where a note goes. The kind of note (decision, constraint, gotcha) is a property rather than a folder, so Obsidian views can list them across every project. Steph Ango's flat vault, ACCESS and Johnny.Decimal were considered.</>,
+      why: <>Every project has <code>apps/&lt;app&gt;/&lt;area&gt;/</code> for lasting knowledge about each thing it builds or runs, <code>research/&lt;topic&gt;/</code> for outside material, <code>plans/&lt;plan&gt;/</code> for work in flight and <code>archive/&lt;topic&gt;/</code> for finished plans and superseded pages. The homelab project uses <code>apps/</code> for what it runs: <code>apps/nas/</code>, <code>apps/network/</code> and <code>apps/mac/</code>. Every folder has a portal page naming its parent, and portal titles are unique vault-wide. A vault-root <code>system/</code> folder holds the project-agnostic rules and six templates in <code>system/templates/</code>; the <code>basic-memory</code> skill mirrors them in full for vaults without <code>system/</code>, and where it exists it wins. The templates are excluded from Basic Memory with an ignore file (<code>.bmignore</code> or <code>.gitignore</code>; which one, and where it must sit, is unverified until checked after the server restart), because Basic Memory stamps a <code>permalink</code> and a missing <code>title</code> into indexed markdown and Obsidian's Templates plugin would copy those into new notes; if the templates get stamped anyway, the fallback is moving them to a dot-folder such as <code>kb/.templates/</code> and repointing Obsidian's Templates plugin. Apps and research beside the PARA folders, nesting inside PARA, and PARA inside each app were rejected.</>,
     },
     {
       title: 'Notes as wiki pages, one template per kind',
@@ -180,7 +186,7 @@ column heading to sort.
       title: 'Plain PARA folder names',
       area: 'Notes',
       status: 'Adopted',
-      why: <>The folders are <code>plans/</code>, <code>areas/</code>, <code>resources/</code> and <code>archive/</code>, without 1- to 4- prefixes. The only cost is that Obsidian's sidebar sorts them alphabetically. Numbered prefixes were rejected because sidebar order was all they bought.</>,
+      why: <>The folders are <code>plans/</code>, <code>areas/</code>, <code>resources/</code> and <code>archive/</code>, without 1- to 4- prefixes. The only cost is that Obsidian's sidebar sorts them alphabetically. Numbered prefixes were rejected because sidebar order was all they bought. The <code>areas/</code> and <code>resources/</code> folders were later replaced by <code>apps/</code> and <code>research/</code>.</>,
     },
     {
       title: 'LiteLLM proxy',

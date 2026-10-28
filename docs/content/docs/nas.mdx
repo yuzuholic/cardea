@@ -134,7 +134,8 @@ answers.
 ## Basic Memory
 
 The notes are plain markdown in `kb/`, beside the compose file. Every top-level folder in
-`kb/` is one Basic Memory project: today `aletheia` (the default) and `homelab`. Basic Memory
+`kb/` is one Basic Memory project: today `aletheia` (the default) and `homelab`, and `system` joins them once the server
+restarts. Basic Memory
 registers each folder as a project every time it starts, so a new project is a new folder
 and a restart:
 
@@ -154,14 +155,31 @@ sudo chown -R 1000:1000 kb
 
 ### How notes are organised
 
-Every project has the same four folders, after the PARA method. One question picks the folder:
+Every project has the same four folders. One question picks the folder:
 
 | Folder | Holds | Ask |
 |---|---|---|
-| `plans/<plan>/` | Work with an end, such as a feature or a migration | Does it finish? |
-| `areas/<area>/` | Lasting parts of the project: decisions, constraints, gotchas, how it works | Is it part of the project for good? |
-| `resources/` | Outside material: a library, an API, research | Did someone else make it? |
-| `archive/` | Finished plans and replaced notes, kept for their history | Is it done or replaced? |
+| `apps/<app>/<area>/` | Lasting knowledge about each thing the project builds or runs: decisions, constraints, gotchas, how it works. | Is it about something the project builds or runs? |
+| `research/<topic>/` | What was learnt from outside: other apps, source sites, platforms, design frameworks. | Did someone else make it? |
+| `plans/<plan>/` | Work in flight: a feature, a migration. Spec, plan, open questions. | Is it work in flight? |
+| `archive/<topic>/` | Finished plans and superseded pages, kept for their reasoning. | Is it done or replaced? |
+
+The homelab project uses `apps/nas/`, `apps/network/` and `apps/mac/` for what it runs. Every
+folder has a portal page naming its parent, the project front page links every top-level
+portal, and portal titles are unique across the vault because Obsidian resolves links by file
+name.
+
+A vault-root `system/` folder holds the rules that apply to every project (How Notes Are
+Written and the vault-wide decisions) and the six templates in `system/templates/`. It becomes
+a Basic Memory project only after the Basic Memory server restarts. Links from project pages
+into `system/` resolve in Obsidian only. An ignore file keeps `system/templates/` out of Basic
+Memory's index, because Basic Memory stamps a `permalink` (and a missing `title`) into every
+markdown file it indexes, and Obsidian's Templates plugin, which points at
+`system/templates`, would copy those into new notes. The exact placement of the ignore file
+(`.bmignore` or `.gitignore`) is unverified until after the restart; if the templates get
+stamped anyway, the fallback is moving them to a dot-folder such as `kb/.templates/` and
+repointing the Templates plugin. The `basic-memory` skill
+mirrors the rules and templates for vaults without `system/`; where `system/` exists, it wins.
 
 What kind of note it is goes in its properties, not its folder, so Obsidian can list every
 decision or gotcha across all projects. Each kind (decision, reference, gotcha, constraint,
@@ -198,10 +216,10 @@ The app keeps its library in SQLite through GRDB, so it works fully offline.
 - part_of [[Database]]
 ```
 
-A note like that one lives at `aletheia/areas/database/Use GRDB for Offline Storage.md`.
+A note like that one lives at `aletheia/apps/ios/database/Use GRDB for Offline Storage.md`.
 Basic Memory indexes the key facts and relations, links in the prose become `links_to`, and
-all of them draw Obsidian's graph. Each area has a portal page named after it, and each
-project a front page linking every area. The `basic-memory` skill in the Cardea plugin has
+all of them draw Obsidian's graph. Every folder has a portal page naming its parent, and
+each project's front page links every top-level portal. The `basic-memory` skill in the Cardea plugin has
 all six templates and the rules agents follow.
 
 In Obsidian, a CSS snippet hides the `title` and `permalink` properties, the inline title is

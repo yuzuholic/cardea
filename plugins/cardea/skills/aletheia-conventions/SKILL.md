@@ -26,7 +26,7 @@ wins over both.
   throws "database methods are not reentrant". Observations cancel in `onTermination` and finish on
   error. The `grdb` skill has the details.
 - **Design personas:** judge UI as a UX designer, an average chud and a power user; the `panel`
-  skill runs all three. The Basic Memory area `areas/design-system` holds the visual rules in
+  skill runs all three. The Basic Memory area `apps/ios/design-system` holds the visual rules in
   full (start at "Design system overview").
 - **Visual rules:** positive framing; semantic colour (green success, blue interactive or in
   progress, yellow/orange attention, red error or destructive, grey neutral); one hero per section;

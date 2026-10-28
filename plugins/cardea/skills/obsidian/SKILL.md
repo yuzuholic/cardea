@@ -22,8 +22,14 @@ markdown Basic Memory reads and writes. Edits on either side are the same files;
   (from level 2, leaving out Key facts and Relations); without it they show as empty code.
   Mermaid diagrams and `> [!warning]` / `> [!note]` callouts render natively.
 - `kb/.obsidian/` holds Obsidian's own settings. Never write to it.
+- The core Templates plugin points at `system/templates/` (a user setting). Those templates are
+  excluded from Basic Memory with an ignore file (`.bmignore` or `.gitignore`; unverified until
+  checked after the server restart), so that it does not stamp `title` and `permalink` into
+  them. If it does anyway, move them to a dot-folder such as `kb/.templates/` and repoint the
+  plugin. Links from project pages into `system/` resolve in Obsidian only, not in Basic
+  Memory.
 - To point the user at a note, give its title or path inside the vault, for example
-  `aletheia/areas/database/Use GRDB for Offline Storage.md`.
+  `<project>/apps/<app>/<area>/<Title>.md`.
 
 ## Access
 

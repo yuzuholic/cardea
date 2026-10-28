@@ -113,8 +113,8 @@ confirm. A choice with a clear default goes ahead, mentioned in one line.
 ## Memory
 
 - Basic Memory holds durable notes. Write there when a decision or constraint outlives the
-  session, filed by PARA (the `basic-memory` skill). Read from there before asking me
-  something I may have already answered.
+  session, filed by apps, research, plans and archive (the `basic-memory` skill). Read from
+  there before asking me something I may have already answered.
 
 ## Isolation
 

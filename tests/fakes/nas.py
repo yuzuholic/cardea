@@ -20,7 +20,7 @@ class Handler(BaseHTTPRequestHandler):
         if body.get("method") != "tools/call":
             return self.reply(200, {"jsonrpc": "2.0", "id": 1, "result": {"serverInfo": {"name": "fake-nas", "version": "1"}}})
         if body["params"]["arguments"].get("project") == "demo":
-            rows = [{"type": "entity", "title": "Use CRDTs for sync", "permalink": "areas/sync/use-crdts-for-sync"}]
+            rows = [{"type": "entity", "title": "Use CRDTs for sync", "permalink": "apps/ios/sync/use-crdts-for-sync"}]
             result = {"content": [{"type": "text", "text": json.dumps(rows)}], "isError": False, "structuredContent": {"result": rows}}
         else:
             result = {"content": [{"type": "text", "text": "Project not found: 'x'"}], "isError": True}

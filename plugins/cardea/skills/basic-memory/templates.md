@@ -1,7 +1,8 @@
 # Note templates
 
 Copy the block for the note's `type`, then replace every `<placeholder>`. The page anatomy and
-writing rules are in [SKILL.md](SKILL.md).
+writing rules are in [SKILL.md](SKILL.md). Each block mirrors the file of the same name in the
+vault's `system/templates/` exactly; whoever changes one updates the other.
 
 ## Decision
 
@@ -83,6 +84,8 @@ Part of [[<Area>]]
 ```swift
 <a short, real example>
 ```
+
+<Optional: a mermaid diagram inside the section it explains, following the Diagrams rules.>
 
 ---
 # Basic Memory
@@ -193,7 +196,7 @@ Part of [[<Plan area or Plans>]]
 
 ## Approach
 
-<How it will be built, in stages if it has them.>
+<How it will be built, in stages if it has them. Optional: a mermaid diagram of the stages or the design.>
 
 ## Status
 
@@ -218,7 +221,7 @@ Part of [[<Plan area or Plans>]]
 
 ## Area
 
-A portal page named after the area, linking every page in it.
+A portal page named after the folder, linking every page in it.
 
 ````markdown
 ---
@@ -229,9 +232,11 @@ updated: YYYY-MM-DD
 ---
 # <Area name>
 
-Part of [[<Project front page>]]
+Part of [[<Parent portal>]]
 
-<Two to four sentences: what this part of the project does and how its pages are grouped.>
+<Two to four sentences: what this part of the app does and how its pages are grouped.>
+
+<Optional: a mermaid architecture diagram of the area's main parts.>
 
 ```toc
 ```
@@ -239,6 +244,10 @@ Part of [[<Project front page>]]
 ## <Group of pages>
 
 - [[<Page title>]]: <one line on what it covers>
+- [[<Page title>]]: <...>
+
+## <Another group>
+
 - [[<Page title>]]: <...>
 
 ## Related areas
@@ -252,26 +261,28 @@ Part of [[<Project front page>]]
 - [fact] <what this area owns, in one line>
 
 ## Relations
-- part_of [[<Project front page>]]
+- part_of [[<Parent portal>]]
 ````
 
 ## Diagrams
 
-Mermaid renders natively in Obsidian. Add a diagram when a page describes a flow, a sequence of
-calls, a state machine, a schema or an architecture, and the picture is clearer than the prose
-alone. It supports the text and never replaces it. Diagrams belong mostly in reference, plan
-and area pages.
+Mermaid diagrams render natively in Obsidian. Add one when a page describes a flow, a sequence
+of calls, a state machine, a schema or an architecture, and the picture is clearer than the
+prose alone. A diagram supports the text and never replaces it.
 
 | Rule | Detail |
 |---|---|
 | Type by content | `flowchart` for a process or decision path, `sequenceDiagram` for interactions over time, `stateDiagram-v2` for state machines, `erDiagram` for tables and keys, `flowchart LR` with `subgraph`s for architecture at the C4 container level |
 | Direction | `LR` for pipelines and architecture, `TD` for hierarchies and decision trees |
 | Size | At most about 12 nodes. Split a larger picture into an overview and a drill-down |
-| Labels | Sentence case, one to four words, real names. Code names in quotes. Label every edge that is not obvious with a verb: `-->|pushes|` |
+| Labels | Sentence case, one to four words, real names. Code names go in quotes. Label every edge that is not obvious with a verb: `-->|pushes|` |
 | Shapes | `[ ]` component, `[( )]` storage, `( )` start or end, `{ }` decision |
-| Styling | None: no colours, `classDef` or `style`. The theme handles dark and light mode, and colour never carries meaning |
-| Placement | Inside the section it explains, after a sentence saying what it shows |
-| Links | Basic Memory does not index links inside a diagram, and they do not reach the graph, so every page a diagram names is also linked in the prose |
+| Styling | None. No colours, `classDef` or `style`; the theme handles dark and light mode, and colour never carries meaning |
+| Placement | Inside the section it explains, after a sentence that says what it shows |
+| Links | Links inside a diagram are not indexed by Basic Memory and do not appear in the graph, so every page a diagram names is also linked in the surrounding prose |
+
+Diagrams belong mostly in reference, plan and area pages, and rarely in decisions, gotchas or
+constraints.
 
 ```mermaid
 flowchart LR
