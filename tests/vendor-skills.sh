@@ -1,6 +1,6 @@
 #!/bin/sh
-# scripts/vendor-skills.sh produces the herdr and graphify skills, and never touches the
-# real CLAUDE.md while doing it. needs herdr and graphify installed.
+# scripts/vendor-skills.sh produces the herdr, graphify and marimo-notebook skills, and never
+# touches the real CLAUDE.md while doing it. needs herdr and graphify installed, and network.
 set -eu
 cd "$(dirname "$0")/.."
 fail() { echo "FAIL: $*" >&2; exit 1; }
@@ -15,10 +15,12 @@ HOME="$work/home" sh scripts/vendor-skills.sh "$work/skills" || fail "vendor-ski
 
 grep -qx 'name: herdr' "$work/skills/herdr/SKILL.md" || fail "herdr skill missing or misnamed"
 grep -qx 'name: graphify' "$work/skills/graphify/SKILL.md" || fail "graphify skill missing or misnamed"
+grep -qx 'name: marimo-notebook' "$work/skills/marimo-notebook/SKILL.md" || fail "marimo-notebook skill missing or misnamed"
 [ "$(cat "$work/home/.claude/CLAUDE.md")" = sentinel ] || fail "graphify edited the real CLAUDE.md"
 
 # a second run replaces cleanly instead of nesting or failing
 HOME="$work/home" sh scripts/vendor-skills.sh "$work/skills" >/dev/null || fail "second run failed"
 [ ! -d "$work/skills/graphify/graphify" ] || fail "second run nested the graphify folder"
+[ ! -d "$work/skills/marimo-notebook/marimo-notebook" ] || fail "second run nested the marimo-notebook folder"
 
-echo "ok: herdr and graphify skills generated"
+echo "ok: herdr, graphify and marimo-notebook skills generated"

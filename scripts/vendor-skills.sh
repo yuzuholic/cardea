@@ -1,6 +1,7 @@
 #!/bin/sh
-# install the skills that herdr and graphify ship themselves, generated from the installed
-# binaries so they always match the version on this machine. rerun after updating either.
+# install the skills that herdr, graphify and marimo ship themselves. herdr's and graphify's are
+# generated from the installed binaries so they match the version on this machine; marimo's
+# notebook skill is copied from marimo-team/skills. rerun after updating any of them.
 #
 #   scripts/vendor-skills.sh [skills dir]      default: ~/.claude/skills
 #
@@ -42,5 +43,18 @@ if command -v graphify >/dev/null 2>&1; then
 else
   echo "graphify: not installed, skipped"
 fi
+
+# marimo publishes its skills in a git repo rather than a binary, so take the latest
+# marimo-notebook folder from it.
+scratch=$(mktemp -d)
+if git clone -q --depth 1 https://github.com/marimo-team/skills "$scratch/repo" 2>/dev/null &&
+   [ -s "$scratch/repo/skills/marimo-notebook/SKILL.md" ]; then
+  rm -rf "$DEST/marimo-notebook"
+  mv "$scratch/repo/skills/marimo-notebook" "$DEST/marimo-notebook"
+  echo "marimo-notebook skill → $DEST/marimo-notebook"
+else
+  echo "marimo: could not fetch marimo-team/skills" >&2; FAILED=1
+fi
+rm -rf "$scratch"
 
 [ -z "$FAILED" ]

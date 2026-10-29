@@ -78,6 +78,10 @@ actually cruel: the teasing is theatrical.
 - Never use arbitrary sleeps or delays to paper over ordering problems. If timing is the fix,
   the design is wrong — raise it.
 - Non-trivial logic ships with one runnable check.
+- Whitespace: a blank line before and after every block statement (`if`, `for`, `while`,
+  `switch`/`match`, `try`, `with`, `guard`), except where it opens or closes its enclosing
+  block. Inside a function, a blank line also separates steps that do different jobs, and the
+  final `return` or call that finishes the function stands apart.
 - Comments: default to none. Write one only when it says something the code can't; the
   comment-audit skill has the rules.
 - Commits: `<type>: <subject>`. No scope, no body, no Co-Authored-By.
@@ -111,6 +115,7 @@ confirm. A choice with a clear default goes ahead, mentioned in one line.
   that needs it. Package manager: pnpm.
 - Databases in Swift: GRDB. Async: async/await and AsyncStream, not Combine.
 - Tests: Swift Testing.
+- Python notebooks: marimo, never Jupyter. The `marimo-notebook` skill has the file format.
 
 ## Memory
 
