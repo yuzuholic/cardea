@@ -35,3 +35,12 @@ wins over both.
   unexplained jargon, buried primary actions, meaningless decoration and redundant success badges.
 - **Haptics:** `.sensoryFeedback(trigger:)` in step with the animation, one per user action, never
   while reading or scrolling; background work gets one at start and one at completion at most.
+  - Every entry point to `DetailsScreen` (any tap that opens a series' Details: `NavigationLink`,
+    route, path append, sheet hit) plays `.sensoryFeedback(.impact(weight: .medium), trigger:)` at
+    the call site, driven by a counter bumped at the tap. New entry points too. Never inside
+    `DetailsScreen` itself: it plays after the push starts and also fires for the
+    `-AletheiaOpenSeries` launch flag.
+  - Tab bar buttons, recent searches, section folds and navigation links play
+    `.impact(weight: .light)` on a per-tap counter, so a repeated tap (re-tapping the current tab
+    included) fires again and programmatic changes stay silent. Not `.selection`: tried for tabs
+    and too light.
