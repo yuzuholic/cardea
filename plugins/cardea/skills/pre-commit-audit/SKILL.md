@@ -77,6 +77,10 @@ Zero compiler warnings; fix any before going on. Other stacks: the project's lin
   `entry`, not `e`; `scores`, not `out`. Single letters only where the domain itself uses them, such as
   `x`, `y`, `z` for coordinates. Rename in the changed files, and update every caller and test.
 - The project's copy and terminology rules hold for user-facing text.
+- No mention of an AI tool or company in the change. Run
+  `python3 -I "${CLAUDE_PLUGIN_ROOT}/hooks/hook.py" scan`,
+  remove what it lists where it is attribution, and put the rest in the report for the user,
+  who approves each commit at commit time anyway.
 - Flag, do not ship silently: any database schema change, new dependency or destructive removal.
 
 ## 6. Report
@@ -87,6 +91,7 @@ One message, plain language first:
 - **Docs:** which files changed, or "none needed" and why.
 - **Tests:** suites run, pass/fail counts, new tests. Paste failures verbatim.
 - **Build:** warning count from the clean build.
+- **AI mentions:** what the scan listed, what was removed, and what remains for the user to approve.
 - **Skipped:** anything skipped, and why.
 
 ## If asked to commit

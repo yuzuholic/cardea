@@ -1,4 +1,5 @@
-"""cardea's claude code hooks: python3 hook.py session|secrets|commit|web, hook json on stdin.
+"""cardea's claude code hooks: python3 hook.py session|secrets|commit|web, hook json on stdin,
+or python3 hook.py scan [dir] to list AI mentions in a working tree.
 every hook fails open: any error exits 0 with no output, so a broken hook never blocks."""
 import json
 import os
@@ -14,6 +15,9 @@ READERS = {"cat", "less", "more", "head", "tail", "grep", "egrep", "fgrep", "rg"
            "gawk", "bat", "source", ".", "nl", "tac", "strings", "xxd", "od", "hexdump", "base64"}
 STDOUT = {"/dev/stdout", "/dev/fd/1", "/dev/tty", "-"}
 TYPES = ("feat", "fix", "docs", "style", "refactor", "test", "chore", "perf", "ci", "build")
+AI_PATTERNS = ("claude", "anthropic", "chatgpt", "openai", "copilot", "cursor", "gemini", "codex",
+               "🤖", "claude.ai/code/session_", "noreply@anthropic.com")
+AI_SHOWN = 20
 BM_TIMEOUT = 1.5
 NOTES = 5
 STATE_DAYS = 7
@@ -25,6 +29,10 @@ def emit(event, **fields):
 
 def deny(reason):
     emit("PreToolUse", permissionDecision="deny", permissionDecisionReason=reason)
+
+
+def ask(reason):
+    emit("PreToolUse", permissionDecision="ask", permissionDecisionReason=reason)
 
 
 # session start
@@ -217,13 +225,139 @@ def commit_problems(message):
     return problems
 
 
+def ai_words(line):
+    low = line.lower()
+    return [p for p in AI_PATTERNS if p in low]
+
+
+def git_out(path, *args):
+    return subprocess.run(["git", "-C", path, *args], capture_output=True, text=True, timeout=3).stdout
+
+
+def diff_hits(diff):
+    hits, name, n = [], None, 0
+
+    for line in diff.splitlines():
+        if line.startswith("+++ "):
+            name = line[6:] if line.startswith("+++ b/") else None
+        elif line.startswith("@@"):
+            m = re.match(r"@@ -\S+ \+(\d+)", line)
+            n = int(m.group(1)) if m else 0
+        elif line.startswith("+") and name:
+            hits += [f"{name}:{n}: {w}" for w in ai_words(line)]
+            n += 1
+
+    return hits
+
+
+def worktree_hits(path):
+    """matches in the added lines of git diff HEAD and in the untracked, non-ignored files."""
+    hits = diff_hits(git_out(path, "diff", "HEAD", "-U0", "--no-color"))
+
+    for name in git_out(path, "ls-files", "--others", "--exclude-standard").splitlines():
+        try:
+            with open(os.path.join(path, name), "rb") as f:
+                data = f.read()
+        except OSError:
+            continue
+
+        if b"\0" in data:
+            continue
+
+        for n, line in enumerate(data.decode(errors="replace").splitlines(), 1):
+            hits += [f"{name}:{n}: {w}" for w in ai_words(line)]
+
+    return hits
+
+
+def stages(rest, before):
+    """whether a commit also stages: a git add or rm before it, -a, --all or pathspecs."""
+    if re.search(r"\bgit\b[^\n;&|]*\b(add|rm)\b", before):
+        return True
+
+    try:
+        lex = shlex.shlex(rest.split("\n")[0], posix=True, punctuation_chars=True)
+        lex.whitespace_split = True
+        words = list(lex)
+    except ValueError:
+        return True
+
+    skip = False
+
+    for w in words:
+        if w in {"&&", "||", ";", "|", "&"}:
+            break
+
+        if skip:
+            skip = False
+        elif re.fullmatch(r"-[^-]*a[^-]*|--all|--", w) or not w.startswith("-") or w.startswith("<"):
+            return True
+        elif w in {"-m", "-F", "-C", "-c", "--message", "--file", "--author", "--date"}:
+            skip = True
+
+    return False
+
+
+def ask_reason(hits):
+    lines = hits[:AI_SHOWN] + ([f"and {len(hits) - AI_SHOWN} more"] if len(hits) > AI_SHOWN else [])
+    return ("cardea: AI attribution check: this commit mentions an AI tool or company:\n" + "\n".join(lines)
+            + "\nApprove to commit anyway, or refuse to stop; the choice covers this commit only.")
+
+
+def attribution(command, cwd, message):
+    m = re.search(r"\bgit\s+((?:-[Cc]\s+\S+\s+)*)commit\b(.*)", command, re.S)
+    if not m:
+        return []
+
+    cds = [d.strip("'\"") for d in re.findall(r"\bcd\s+(\"[^\"]*\"|'[^']*'|[^\s;&|]+)\s*(?:&&|;)", command[:m.start()])]
+    cds = [d for d in cds if d != "-"]
+    path = os.path.join(cwd, os.path.expanduser(cds[-1])) if cds else cwd
+
+    for d in re.findall(r"-C\s+(\S+)", m.group(1)):
+        path = os.path.join(path, d.strip("'\""))
+
+    if git_project(path) == "cardea":
+        return []
+
+    hits = [f"commit message: {w}" for line in (message or "").splitlines() for w in ai_words(line)]
+    file = re.search(r"(?:\s-F\s*|\s--file[=\s]\s*)(?!-(?:\s|$))(\S+)", m.group(2))
+
+    if file:
+        try:
+            with open(os.path.join(path, file.group(1).strip("'\""))) as f:
+                hits += [f"commit message: {w}" for line in f for w in ai_words(line)]
+        except OSError:
+            pass
+
+    # shortcut: a message written in the editor can't be seen; upgrade by reading it in a commit-msg git hook.
+    if stages(m.group(2), command[:m.start()]):
+        return hits + worktree_hits(path)
+
+    return hits + diff_hits(git_out(path, "diff", "--cached", "-U0", "--no-color"))
+
+
 def commit(data):
-    message = commit_message((data.get("tool_input") or {}).get("command", ""))
+    command = (data.get("tool_input") or {}).get("command", "")
+    message = commit_message(command)
     problems = commit_problems(message) if message else []
     if problems:
         deny("cardea: commit message rejected: " + "; ".join(problems) + ". The format is one line, "
              '"<type>: <subject>", no scope, lowercase start, no trailing period, under 72 characters, '
              "no body and no Co-Authored-By or other trailers.")
+        return
+
+    hits = attribution(command, data.get("cwd") or os.getcwd(), message)
+    if hits:
+        ask(ask_reason(hits))
+
+
+def scan(path):
+    if git_project(path) == "cardea":
+        print("no AI mentions checked: this repo is cardea, which is exempt")
+        return
+
+    hits = worktree_hits(path)
+    print("\n".join(hits) if hits else "no AI mentions")
 
 
 # web nudge
@@ -251,6 +385,9 @@ def web(data):
 
 if __name__ == "__main__":
     try:
+        if sys.argv[1] == "scan":
+            scan(os.path.abspath(sys.argv[2] if len(sys.argv) > 2 else os.getcwd()))
+            sys.exit(0)
         {"session": session, "secrets": secrets, "commit": commit, "web": web}[sys.argv[1]](json.load(sys.stdin))
     except Exception:
         pass

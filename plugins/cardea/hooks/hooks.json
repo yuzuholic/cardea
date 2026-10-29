@@ -1,5 +1,5 @@
 {
-  "description": "cardea: a session note on where to look things up, a block on reading secrets, the commit message format, and a once-a-session nudge before the web.",
+  "description": "cardea: a session note on where to look things up, a block on reading secrets, the commit message format, an approval prompt for commits that mention an AI tool or company, and a once-a-session nudge before the web.",
   "hooks": {
     "SessionStart": [
       {

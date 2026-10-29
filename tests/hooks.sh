@@ -83,6 +83,34 @@ EOF"
 deny_commit 'trailing period' 'git add . && git commit -m "fix: x."'
 python3 -c 'import json,sys; json.loads(sys.argv[1])' "$out" || fail "the deny output is not JSON"
 
+# attribution: a flagged message or change asks, a clean one is silent, cardea is exempt.
+mkdir -p "$work/attr/proj" "$work/attr/cardea"
+for r in proj cardea; do git -C "$work/attr/$r" init -q; done
+printf 'one\nGenerated with Claude Code\n' > "$work/attr/proj/notes.txt"; git -C "$work/attr/proj" add notes.txt
+printf 'one\nGenerated with Claude Code\n' > "$work/attr/cardea/notes.txt"; git -C "$work/attr/cardea" add notes.txt
+asks() { run commit "$(tool s Bash command "$2")"; case $out in *'"permissionDecision": "ask"'*) ;; *) fail "commit should ask: $2" ;; esac; says "$1"; }
+asks 'notes.txt:2: claude' "git -C $work/attr/proj commit -m \"feat: add x\""
+says 'cardea: AI attribution check:'; says 'this commit only'
+allowed commit "$(tool s Bash command "git -C $work/attr/cardea commit -m \"feat: add x\"")"
+git -C "$work/attr/proj" rm -q --cached notes.txt; rm "$work/attr/proj/notes.txt"
+allowed commit "$(tool s Bash command "git -C $work/attr/proj commit -m \"feat: add x\"")"
+asks 'commit message: chatgpt' "git -C $work/attr/proj commit -m \"fix: reword chatgpt prompt\""
+printf 'x Gemini\n' > "$work/attr/proj/g.txt"; git -C "$work/attr/proj" add g.txt
+asks 'g.txt:1: gemini' "git -C elsewhere status && git -C $work/attr/proj commit -m \"feat: add x\""
+git -C "$work/attr/proj" rm -q -f --cached g.txt; rm "$work/attr/proj/g.txt"
+printf 'x Gemini\n' > "$work/attr/proj/g.txt"; git -C "$work/attr/proj" add g.txt
+cwd_run() { run commit "$(python3 -c 'import json,sys; print(json.dumps({"cwd": sys.argv[1], "tool_name": "Bash", "tool_input": {"command": sys.argv[2]}}))' "$1" "$2")"; }
+cwd_run "$work/attr/cardea" "cd $work/attr/proj && git commit -m \"feat: add x\""; says 'g.txt:1: gemini'
+cwd_run "$work/attr/proj" "cd $work/attr/cardea && git commit -m \"feat: add x\""; [ -z "$out" ] || fail "a cd into cardea should stay silent"
+git -C "$work/attr/proj" rm -q -f --cached g.txt; rm "$work/attr/proj/g.txt"
+denied commit "$(tool s Bash command "git -C $work/attr/proj commit -m \"Fix: Claude\"")"
+printf 'by Codex\n' > "$work/attr/proj/loose.txt"
+asks 'loose.txt:1: codex' "git -C $work/attr/proj add -A && git -C $work/attr/proj commit -m \"feat: add x\""
+printf 'feat: ask claude\n' > "$work/attr/proj/msg.txt"
+asks 'commit message: claude' "git -C $work/attr/proj commit -F msg.txt"
+out=$(python3 -I "$HOOK" scan "$work/attr/proj") || fail "scan exited non-zero"; says 'loose.txt:1: codex'
+out=$(python3 -I "$HOOK" scan "$work/attr/cardea") || fail "scan exited non-zero"; says 'exempt'
+
 # web: once per session, and stale state is pruned.
 mkdir -p "$work/data/web-nudged"; touch -t 202001010000 "$work/data/web-nudged/old-session"
 run web "$(tool one WebSearch query 'grdb observation')"; says 'retrieval-order'
