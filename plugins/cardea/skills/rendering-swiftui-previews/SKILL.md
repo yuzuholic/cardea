@@ -80,7 +80,7 @@ clone the golden simulator (see `sim-clone-restore`) only when it does.
    ```
 
    `-scheme` is the app scheme and the `-only-testing:` prefix is the test target name. They
-   usually differ (scheme `aletheia`, test target `aletheiaTests`), and the test target often
+   usually differ (scheme `MyApp`, test target `MyAppTests`), and the test target often
    has no scheme of its own.
 
 3. Crop to the part worth showing, then read it:

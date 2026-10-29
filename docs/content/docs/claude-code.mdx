@@ -17,7 +17,7 @@ leaves everything else to you.
 | <Tool icon="langfuse.svg">Langfuse tracing</Tool> | Plugin | Plugin marketplace, configured from `.env` |
 | <Tool icon="claude.svg" mono>Cardea plugin</Tool> | Plugin, a copy in `~/.claude/plugins/cache/` | `claude plugin install` from the repo |
 | Five more plugins | Plugins | Their own marketplaces |
-| <Tool icon="herdr.svg">herdr</Tool> and graphify skills | `~/.claude/skills/herdr/`, `~/.claude/skills/graphify/` | `scripts/vendor-skills.sh` |
+| <Tool icon="herdr.svg">herdr</Tool>, graphify and marimo skills | `~/.claude/skills/herdr/`, `~/.claude/skills/graphify/`, `~/.claude/skills/marimo-notebook/` | `scripts/vendor-skills.sh` |
 
 ## What Cardea leaves alone
 
@@ -64,7 +64,7 @@ for them, so unlike the rules in `CLAUDE.md` they cost nothing until they are us
 |---|---|
 | The self-hosted stack | `basic-memory`, `langfuse`, `obsidian`, `plannotator`, `serena`, `graphify` |
 | Looking things up | `retrieval-order` |
-| iOS | `driving-ios-simulator-with-axe`, `rendering-swiftui-previews`, `sim-clone-restore`, `grdb`, `aletheia-conventions` |
+| iOS | `driving-ios-simulator-with-axe`, `rendering-swiftui-previews`, `sim-clone-restore`, `grdb` |
 | Reviews and releases | `panel`, `comment-audit`, `pre-commit-audit`, `semantic-commit`, `local-merge`, `post-merge-sweep`, `release-changelog` |
 | Recommendations | `recsys` |
 
@@ -78,9 +78,6 @@ Three agents make up the design panel: a UX designer, the average chud and a pow
 `panel` skill puts a question to all three at once and merges their verdicts into one
 recommendation.
 
-`aletheia-conventions` holds the Aletheia app's coding rules. As a skill, they apply when
-work on that app picks it up, not in every session.
-
 `install.sh` installs the plugin from your checkout. Claude Code keeps its own copy, in
 `~/.claude/plugins/cache/cardea/cardea/<version>/`, so an edit in the repo does nothing until
 you refresh that copy and start a new session. Rerunning `./install.sh` updates the Cardea
@@ -90,7 +87,7 @@ plugin and every marketplace plugin. For a quick refresh after an edit, update j
 claude plugin update cardea@cardea
 ```
 
-Anyone can install it without the rest of Cardea:
+The repo is private, so installing the plugin anywhere else needs access to it. With access:
 
 ```sh
 claude plugin marketplace add yuzuholic/cardea
@@ -167,15 +164,15 @@ at low effort.
 
 ## Hooks
 
-The plugin also ships four hooks. Two can block a tool call; the other two only add a note.
-If a hook fails for any reason, the call goes ahead. None of them ever approves a call, so
-your usual permission prompts still apply.
+The plugin also ships four hooks. Two can block a tool call, and the commit hook can also ask
+you first; the other two only add a note. If a hook fails for any reason, the call goes
+ahead. None of them ever approves a call, so your usual permission prompts still apply.
 
 | Hook | When | What it does |
 |---|---|---|
 | Session note | A session starts, resumes or is compacted | Reminds Claude of the lookup order, names the repo's Basic Memory project (the repo's folder name), says whether a graphify map exists, and lists up to five notes from the last week. If the NAS doesn't answer within 1.5 seconds, the notes are left out. |
 | Secrets | Before reading, searching, editing or running a command | Blocks `.env` files and private keys (`id_rsa`, `*.pem`, `*.key`, `*.p12`, `*.p8`), saying secrets go through environment variables only. `.env.example`, `.sample` and `.template` files and `*.pub` keys are fine. |
-| Commit message | Before a `git` command | Blocks a commit whose message isn't `<type>: <subject>`: lowercase, no full stop, under 72 characters, no body and no trailers such as `Co-Authored-By`. It lists what's wrong. If the message can't be read, for example because an editor opens, the commit goes ahead. |
+| Commit message | Before a `git` command | Blocks a commit whose message isn't `<type>: <subject>`: lowercase, no full stop, under 72 characters, no body and no trailers such as `Co-Authored-By`. It lists what's wrong. If the message can't be read, for example because an editor opens, the commit goes ahead. Outside the cardea repo, it also checks the message and the lines being committed for any mention of an AI tool or company, and asks you to approve that one commit when it finds one, listing each file, line and word. Every commit is asked fresh. |
 | Web nudge | The first web search or fetch in a session | Reminds Claude to check notes, code and history first. It never blocks. |
 
 The secrets check on commands is a scan of the words in the command, so it misses some
@@ -198,7 +195,8 @@ that were turned off and updates each one.
 herdr and graphify each ship a skill of their own. `scripts/vendor-skills.sh` generates both
 from the installed versions on every run, so they always match. graphify's installer would
 also edit `CLAUDE.md`; the script runs it against a scratch folder so the real one is never
-touched.
+touched. marimo publishes its skills in a git repo, so the script copies the `marimo-notebook`
+skill from the latest `marimo-team/skills`.
 
 ## Decisions you make
 

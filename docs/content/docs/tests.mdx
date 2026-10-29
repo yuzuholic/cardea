@@ -18,7 +18,7 @@ stand-in tools where the real ones would install things.
 | `install` | The whole of `install.sh` | expect, python3, curl, git; gum for the gum half |
 | `plugin` | The Cardea plugin and its marketplace | Claude Code |
 | `hooks` | The plugin's four hooks | python3, git, curl |
-| `vendor-skills` | The herdr and graphify skills | herdr, graphify |
+| `vendor-skills` | The herdr, graphify and marimo-notebook skills | herdr, graphify, network |
 | `nas` | The NAS launcher and the stack it runs | Docker |
 
 ## install
@@ -53,13 +53,14 @@ skill and agent has a name matching its file and a description.
 ## hooks
 
 Feeds the plugin's hooks the same input Claude Code would send. It checks that secrets and
-badly formed commit messages are blocked and everything else passes quietly, that the web
-reminder shows once per session, and that the session note still works when Basic Memory is
-unreachable. A small fake NAS stands in for Basic Memory.
+badly formed commit messages are blocked, that commits mentioning an AI tool or company are
+asked about rather than blocked, that everything else passes quietly, that the web reminder
+shows once per session, and that the session note still works when Basic Memory is unreachable.
+A small fake NAS stands in for Basic Memory.
 
 ## vendor-skills
 
-Runs `scripts/vendor-skills.sh` into a scratch folder and checks that both skills come out
+Runs `scripts/vendor-skills.sh` into a scratch folder and checks that all three skills come out
 named correctly, that a second run replaces them cleanly, and that graphify's installer never
 edits the real `CLAUDE.md`.
 

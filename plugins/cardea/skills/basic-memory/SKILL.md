@@ -15,7 +15,7 @@ Every top-level folder in `kb/` is a project, and the server registers it on sta
 
 | Project | For |
 |---|---|
-| `aletheia` | The Aletheia app. The default. |
+| `aletheia` | The main app project. The default. |
 | `homelab` | The NAS, the network, the Mac setup (`apps/nas/`, `apps/network/`, `apps/mac/`). Cardea's own decisions live in its repo, on `docs/content/docs/decisions.mdx`. |
 | `system` | The rules every project shares and the six templates. |
 
@@ -52,7 +52,7 @@ One question picks the folder:
 ### Task time estimates
 
 Each project the orchestrator plans for has one reference page, `plans/<Project> Task Time
-Estimates.md` (for example `Aletheia Task Time Estimates`, unique across the vault). It follows
+Estimates.md` (for example `<Project> Task Time Estimates`, unique across the vault). It follows
 the reference template and is `part_of` the Plans portal. It holds:
 
 - **Recent tasks:** a table of date, task, kind, budget, actual and outcome, capped at the latest
@@ -149,7 +149,7 @@ each other.
   heading. Every area page links each of its pages with one line on what it covers, and each
   project has a front page named after the project that links every top-level portal.
 - **Qualifiers:** no colons, slashes or other characters a filename cannot hold; use
-  parentheses for a qualifier (`MangaBall Source (JSON API Rebuild)`).
+  parentheses for a qualifier (`Payments Service (Retry Rewrite)`).
 - **Style:** plain English, Australian spelling, present tense, active voice. No filler, no
   persona, no first person. Dates `YYYY-MM-DD`, numbers with units (`44pt`, `200ms`).
 - **Prose and lists:** paragraphs of two to four sentences. Prose for reasoning, lists for

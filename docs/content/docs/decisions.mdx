@@ -36,7 +36,7 @@ column heading to sort.
       title: 'One Cardea plugin for skills and agents',
       area: 'Rules',
       status: 'Adopted',
-      why: <>Every skill and agent ships in one plugin that anyone can install, and skills load only when a task calls for them. The global rules stay in <code>CLAUDE.md</code>, because a plugin cannot ship one. Project rules that are only needed sometimes, like <code>aletheia-conventions</code>, become skills instead.</>,
+      why: <>Every skill and agent ships in one plugin, and skills load only when a task calls for them. The global rules stay in <code>CLAUDE.md</code>, because a plugin cannot ship one. Project rules that are only needed sometimes become skills instead.</>,
     },
     {
       title: 'Link files, never folders',
@@ -219,10 +219,34 @@ column heading to sort.
       why: <>It syncs rules across several agents. With one agent, a symlinked <code>CLAUDE.md</code> does the job.</>,
     },
     {
+      title: 'Blank lines around blocks',
+      area: 'Rules',
+      status: 'Adopted',
+      why: <>Every block statement has a blank line before and after it, unless it opens or closes its enclosing block, and a function's distinct steps and its final return are separated the same way. It is the user's preferred layout, set as a global rule so every project and agent writes code that reads the same. Formatters do not enforce it, so it relies on the rule being followed.</>,
+    },
+    {
+      title: 'marimo for notebooks',
+      area: 'Tools',
+      status: 'Adopted',
+      why: <>Python notebooks are marimo files, never Jupyter. A marimo notebook is plain Python with a known run order, so agents can read, diff, edit and run it like any script, and there is no hidden state from cells run out of order. Its official <code>marimo-notebook</code> skill is copied by <code>scripts/vendor-skills.sh</code>, which now needs the network. Adopted for the aigis model repo first.</>,
+    },
+    {
       title: 'Vite or Astro before Next.js, and pnpm',
       area: 'Rules',
       status: 'Adopted',
       why: <>New web projects start on Vite, or Astro for content sites. Next.js is kept for serious, web-only products that need it, because most projects at their scale do not need a full framework. pnpm is the package manager. Existing projects, such as this docs site on Next.js and npm, stay as they are unless moved on purpose.</>,
+    },
+    {
+      title: 'Only generic skills and agents',
+      area: 'Rules',
+      status: 'Adopted',
+      why: <>Cardea ships only generic skills and agents. Project-specific ones live in the project's own repo, for example under <code>.agents/skills</code>, linked from <code>.claude/skills</code>, so Cardea stays reusable and a project's rules travel with its code. <code>aletheia-conventions</code> moved to the aletheia repo on this basis.</>,
+    },
+    {
+      title: 'AI attribution check at commit',
+      area: 'Rules',
+      status: 'Adopted',
+      why: <>Outside Cardea, a git commit whose message or changed lines mention an AI tool or company (Claude, Anthropic, ChatGPT, OpenAI, Copilot, Cursor, Gemini, Codex, the robot emoji, a Claude session link or the Anthropic noreply address) stops and asks the user to approve or refuse that one commit. The prompt lists each match as a file, line and word, and matches in the message show as the commit message. Approvals are never remembered. The pre-commit audit lists the same matches earlier, from the same pattern list. Cardea itself is exempt because it is about these tools. <code>Signed-off-by</code> stays blocked with every other trailer.</>,
     },
     {
       title: 'Beads',

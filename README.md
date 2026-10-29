@@ -69,8 +69,8 @@ sudo docker compose up -d
 
 ## The Claude Code plugin
 
-The skills and agents are a Claude Code plugin anyone can install, with or without the rest
-of Cardea:
+The skills and agents are a Claude Code plugin. The repo is private, so installing it
+outside your checkout needs access to the repo:
 
 ```sh
 claude plugin marketplace add yuzuholic/cardea
@@ -83,7 +83,7 @@ claude plugin install cardea@cardea
 |---|---|
 | The self-hosted stack | `basic-memory`, `langfuse`, `obsidian`, `plannotator`, `serena`, `graphify` |
 | Looking things up | `retrieval-order` |
-| iOS | `driving-ios-simulator-with-axe`, `rendering-swiftui-previews`, `sim-clone-restore`, `grdb`, `aletheia-conventions` |
+| iOS | `driving-ios-simulator-with-axe`, `rendering-swiftui-previews`, `sim-clone-restore`, `grdb` |
 | Reviews and releases | `panel`, `comment-audit`, `pre-commit-audit`, `semantic-commit`, `local-merge`, `release-changelog` |
 | Recommendations | `recsys` |
 
@@ -128,7 +128,7 @@ the stack looks like this.
 | `.claude-plugin/` | The marketplace manifest, so `claude plugin marketplace add` finds the plugin. |
 | `plugins/cardea/` | The plugin: skills and agents. |
 | `nas/` | The NAS side: `compose.yml`, `.env.example`, and the launcher image with the stack it runs. |
-| `scripts/vendor-skills.sh` | Generates herdr's and graphify's own skills from the installed tools. |
+| `scripts/vendor-skills.sh` | Generates herdr's and graphify's own skills from the installed tools, and copies marimo's notebook skill. |
 | `tests/` | The tests below. |
 | `docs/` | The docs site (Fumadocs on GitHub Pages). |
 
@@ -140,7 +140,7 @@ Each test is one script: `sh tests/<name>.sh`. CI runs them all, plus a docs bui
 |---|---|---|
 | `plugin` | The marketplace and plugin validate, and every skill and agent has a name and description. | Claude Code |
 | `hooks` | Secrets and badly formed commit messages are blocked, everything else passes, and the session note copes with the NAS being down. | python3, git |
-| `vendor-skills` | Both vendored skills are generated, a rerun replaces them cleanly, and your `CLAUDE.md` is never touched. | herdr, graphify |
+| `vendor-skills` | All three vendored skills are produced, a rerun replaces them cleanly, and your `CLAUDE.md` is never touched. | herdr, graphify, network |
 | `nas` | The launcher builds, missing secrets are named, the stack renders with the right paths, and it really starts, picks up `.env` changes and stops. | Docker |
 | `install` | `install.sh` end to end against stand-in tools and a stand-in NAS: every prompt case, `--no-prompt`, `--check`, and piping from curl, with and without gum. | expect, python3 |
 
