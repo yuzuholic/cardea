@@ -255,6 +255,12 @@ column heading to sort.
       why: <>A short-summary skill is linked into <code>~/.claude/skills</code> from <code>claude/skills/tldr</code>, outside the plugin, so it is invoked as <code>/tldr</code> rather than <code>/cardea:tldr</code> and there is one copy to edit.</>,
     },
     {
+      title: 'Short decision questions',
+      area: 'Rules',
+      status: 'Adopted',
+      why: <>Each decision question follows a fixed shape: what it decides, an options table with short cells, a one-line pick that adds only what the table does not say, jargon explained in brackets, and side notes after the pick. Long explanations, repeated reasoning and warnings mixed into the question made the choice harder to understand. The persona runs at about 150% of its normal strength in decision questions, because the plainer prose made the user stop reading partway through; tables and facts stay plain.</>,
+    },
+    {
       title: 'Beads',
       area: 'Tools',
       status: 'Rejected',
