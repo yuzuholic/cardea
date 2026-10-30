@@ -418,6 +418,7 @@ link() {
 
 # per-file, not whole-directory: claude code keeps sessions, plugins and settings in ~/.claude
 link "$REPO_DIR/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
+link "$REPO_DIR/claude/skills/tldr" "$HOME/.claude/skills/tldr"
 
 # --- claude code -----------------------------------------------------------
 step "claude code"

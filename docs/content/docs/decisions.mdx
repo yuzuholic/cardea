@@ -249,6 +249,12 @@ column heading to sort.
       why: <>Outside Cardea, a git commit whose message or changed lines mention an AI tool or company (Claude, Anthropic, ChatGPT, OpenAI, Copilot, Cursor, Gemini, Codex, the robot emoji, a Claude session link or the Anthropic noreply address) stops and asks the user to approve or refuse that one commit. The prompt lists each match as a file, line and word, and matches in the message show as the commit message. Approvals are never remembered. The pre-commit audit lists the same matches earlier, from the same pattern list. Cardea itself is exempt because it is about these tools. <code>Signed-off-by</code> stays blocked with every other trailer.</>,
     },
     {
+      title: 'tldr as a global skill',
+      area: 'Tools',
+      status: 'Adopted',
+      why: <>A short-summary skill is linked into <code>~/.claude/skills</code> from <code>claude/skills/tldr</code>, outside the plugin, so it is invoked as <code>/tldr</code> rather than <code>/cardea:tldr</code> and there is one copy to edit.</>,
+    },
+    {
       title: 'Beads',
       area: 'Tools',
       status: 'Rejected',

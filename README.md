@@ -125,6 +125,7 @@ the stack looks like this.
 | `install.sh` | The Mac install. |
 | `Brewfile` | Homebrew packages. |
 | `claude/CLAUDE.md` | Global rules, linked to `~/.claude/CLAUDE.md`. |
+| `claude/skills/tldr/` | The tldr skill, linked to `~/.claude/skills/tldr`. |
 | `.claude-plugin/` | The marketplace manifest, so `claude plugin marketplace add` finds the plugin. |
 | `plugins/cardea/` | The plugin: skills and agents. |
 | `nas/` | The NAS side: `compose.yml`, `.env.example`, and the launcher image with the stack it runs. |
