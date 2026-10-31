@@ -84,6 +84,7 @@ installed() {
   called "plugin configure langfuse-observability@langfuse-observability --values-stdin <<< {\"LANGFUSE_BASE_URL\":\"$1\""
   [ "$(readlink "$dir/home/.claude/CLAUDE.md")" = "$dir/repo/claude/CLAUDE.md" ] || fail "$name: ~/.claude/CLAUDE.md is not linked to the repo"
   [ "$(readlink "$dir/home/.claude/skills/tldr")" = "$dir/repo/claude/skills/tldr" ] || fail "$name: ~/.claude/skills/tldr is not linked to the repo"
+  [ "$(readlink "$dir/home/.claude/skills/baby")" = "$dir/repo/claude/skills/baby" ] || fail "$name: ~/.claude/skills/baby is not linked to the repo"
   said 'claude auth login'
 }
 # gum drew the prompts in gum mode, and never in plain mode.
