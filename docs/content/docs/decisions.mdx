@@ -261,6 +261,12 @@ column heading to sort.
       why: <>Each decision question follows a fixed shape: what it decides, an options table with short cells, a one-line pick that adds only what the table does not say, jargon explained in brackets, and side notes after the pick. Long explanations, repeated reasoning and warnings mixed into the question made the choice harder to understand. The persona runs at about 150% of its normal strength in decision questions, because the plainer prose made the user stop reading partway through; tables and facts stay plain.</>,
     },
     {
+      title: "Apps follow the iOS app's layout",
+      area: 'Notes',
+      status: 'Adopted',
+      why: <>Every app under <code>apps/</code> has a portal with a diagram and grouped areas, notes live in topic area folders, and nothing but the portal sits at the app root, as in the Aletheia iOS app. An app may keep its own <code>plans/</code> folder for work in flight on that app alone; accepted decisions move into the area they are about, and the folder moves to <code>archive/</code> when the plan finishes. The user chose per-app <code>plans/</code> over moving that work into the project <code>plans/</code> or a <code>roadmap/</code> area. Work spanning several apps stays in the project's <code>plans/</code>. Decided 2026-10-31.</>,
+    },
+    {
       title: 'Beads',
       area: 'Tools',
       status: 'Rejected',

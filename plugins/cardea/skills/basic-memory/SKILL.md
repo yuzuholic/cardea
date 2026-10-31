@@ -32,7 +32,7 @@ One question picks the folder:
 |---|---|---|
 | `apps/<app>/<area>/` | Lasting knowledge about each thing the project builds or runs: decisions, constraints, gotchas, how it works. | Is it about something the project builds or runs? |
 | `research/<topic>/` | What was learnt from outside: other apps, source sites, platforms, design frameworks. | Did someone else make it? |
-| `plans/<plan>/` | Work in flight: a feature, a migration. Spec, plan, open questions. | Is it work in flight? |
+| `plans/<plan>/` | Work in flight that spans several apps: a feature, a migration. Spec, plan, open questions. | Is it work in flight? |
 | `archive/<topic>/` | Finished plans and superseded pages, kept for their reasoning. | Is it done or replaced? |
 
 - `apps/` means each thing the project builds or runs, so a project without software uses it
@@ -44,8 +44,21 @@ One question picks the folder:
   top-level portal.
 - Portal titles are unique across the whole vault, because Obsidian resolves links by file
   name (`Sources Repo` for a source packages app, not `Sources`, which is an iOS area).
+- Every app is organised like the Aletheia iOS app. `apps/<app>/<App portal>.md` (`type: area`)
+  is the app portal, shaped like `aletheia/apps/ios/iOS App.md`: `Part of [[Apps]]`, a lead, a
+  `toc` block, a "How <app> fits together" mermaid flowchart, the areas grouped under `##`
+  headings with one line each, `## Related apps`, then the Basic Memory section.
+- Notes live in topic folders `apps/<app>/<area>/`, each with an area portal (`type: area`)
+  shaped like `aletheia/apps/ios/library/Library.md`: `Part of [[<App portal>]]`, a lead, a
+  `toc` block, pages grouped by topic, `## Related areas`. A sub-app prefixes its area portal
+  titles (`Aigis Scoring`, not `Scoring`).
+- Nothing but the app portal sits at the app root; every note belongs to exactly one area.
+- An app may keep `apps/<app>/plans/` for work in flight on that app alone: plan pages and a
+  plans portal only. Move an accepted decision into the area it is about. Work spanning
+  several apps stays in the project's `plans/<plan>/`.
 - When a plan finishes, move anything lasting it produced (a decision, a gotcha) into its app
-  area, then move the plan's folder to `archive/` with `move_note`.
+  area, then move the plan's folder (a per-app `plans/` folder included) to `archive/` with
+  `move_note`.
 - When a decision is replaced, set the old note's `status: superseded`, move it to
   `archive/`, and link the new one to it with `supersedes`.
 
