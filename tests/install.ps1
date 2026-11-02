@@ -220,3 +220,4 @@ finally {
 }
 
 Write-Host 'ok: install.ps1 cases pass'
+exit 0
