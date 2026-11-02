@@ -273,6 +273,36 @@ column heading to sort.
       why: <>Every app under <code>apps/</code> has a portal with a diagram and grouped areas, notes live in topic area folders, and nothing but the portal sits at the app root, as in the Aletheia iOS app. An app may keep its own <code>plans/</code> folder for work in flight on that app alone; accepted decisions move into the area they are about, and the folder moves to <code>archive/</code> when the plan finishes. The user chose per-app <code>plans/</code> over moving that work into the project <code>plans/</code> or a <code>roadmap/</code> area. Work spanning several apps stays in the project's <code>plans/</code>. Decided 2026-10-31.</>,
     },
     {
+      title: 'Native PowerShell installer for Windows',
+      area: 'Install',
+      status: 'Adopted',
+      why: <><code>install.ps1</code> is a separate native script, not a WSL setup and not a port of the bash installer.</>,
+    },
+    {
+      title: 'Core set on Windows',
+      area: 'Install',
+      status: 'Adopted',
+      why: <>It installs the global rules, the tldr and baby skills, the cardea plugin, the basic-memory and serena MCP servers, the marketplace plugins except apple-skills, and the marimo and graphify skills. plannotator and langfuse are left out because they need curl-piped binaries or <code>.env</code> setup. <code>uv</code> is required because serena and graphify use it.</>,
+    },
+    {
+      title: 'Symlinks on Windows, with Developer Mode',
+      area: 'Install',
+      status: 'Adopted',
+      why: <>Links are real symlinks, so edits in the repo apply at once. The script probes symlink creation and stops before writing anything if Developer Mode is off and the shell is not elevated. Copies were rejected because they drift from the repo, and hardlinks because editors that save by replacing the file break them silently.</>,
+    },
+    {
+      title: 'One bash hook entry picks py or python3',
+      area: 'Install',
+      status: 'Adopted',
+      why: <>Claude Code has no per-OS hook entries and runs hooks in Git Bash on Windows, so each hook is one bash command that runs <code>py</code> when <code>OS=Windows_NT</code> and <code>python3</code> elsewhere. Separate PowerShell entries were tried first and dropped because, on a Mac without PowerShell, they raised an error on every tool call. Decided 2026-11-03.</>,
+    },
+    {
+      title: 'Windows CI on every push',
+      area: 'Install',
+      status: 'Adopted',
+      why: <>A <code>windows-latest</code> GitHub Actions job runs the installer tests under PowerShell 7 and 5.1 and the real hooks under Git Bash. Runners are elevated, so the unelevated Developer Mode path is checked only on a real machine.</>,
+    },
+    {
       title: 'Beads',
       area: 'Tools',
       status: 'Rejected',
