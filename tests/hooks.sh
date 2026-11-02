@@ -140,4 +140,38 @@ session "$work/Demo"; says "isn't configured"
 # every hook fails open on input it can't read.
 for h in session secrets commit web; do allowed "$h" 'not json'; done
 
+# hooks.json: four entries, none tied to a shell; each command runs as written on the Mac, and
+# with OS=Windows_NT it launches py instead of python3.
+root=$(pwd)/plugins/cardea
+cmds=$(python3 -c '
+import json
+for groups in json.load(open("plugins/cardea/hooks/hooks.json"))["hooks"].values():
+    for g in groups:
+        for h in g["hooks"]:
+            assert "shell" not in h, "hooks.json entries must not set shell"
+            print(json.dumps(h["command"]))
+')
+mkdir -p "$work/stub"
+printf '#!/bin/sh\necho called >> "%s/py.log"\nexec python3 "$@"\n' "$work/stub" > "$work/stub/py"
+chmod +x "$work/stub/py"
+count=0
+secret=$(tool s Read file_path /repo/.env)
+while IFS= read -r line; do
+  cmd=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).replace("${CLAUDE_PLUGIN_ROOT}", sys.argv[2]))' "$line" "$root")
+  mac=$(printf '%s' "$secret" | env -u OS HOME="$work/home" CLAUDE_PLUGIN_DATA="$work/data-mac" sh -c "$cmd") || fail "hooks.json entry exited non-zero: $cmd"
+  : > "$work/stub/py.log"
+  win=$(printf '%s' "$secret" | env OS=Windows_NT PATH="$work/stub:$PATH" HOME="$work/home" CLAUDE_PLUGIN_DATA="$work/data-win" sh -c "$cmd") || fail "hooks.json entry exited non-zero with OS=Windows_NT: $cmd"
+  [ -s "$work/stub/py.log" ] || fail "OS=Windows_NT should launch py: $cmd"
+  [ "$mac" = "$win" ] || fail "py and python3 results differ: $cmd"
+
+  case $cmd in
+    *' secrets') case $mac in *'"permissionDecision": "deny"'*) ;; *) fail "the secrets entry should deny .env" ;; esac ;;
+  esac
+
+  count=$((count + 1))
+done <<EOF
+$cmds
+EOF
+[ "$count" -eq 4 ] || fail "expected 4 entries in hooks.json, found $count"
+
 echo "ok: hooks pass"

@@ -5,7 +5,7 @@
       {
         "matcher": "startup|resume|compact",
         "hooks": [
-          {"type": "command", "command": "python3 -I \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" session", "timeout": 8}
+          {"type": "command", "command": "\"$([ \"$OS\" = Windows_NT ] && echo py || echo python3)\" -I \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" session", "timeout": 8}
         ]
       }
     ],
@@ -13,19 +13,19 @@
       {
         "matcher": "Read|Grep|Edit|Bash",
         "hooks": [
-          {"type": "command", "command": "python3 -I \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" secrets", "timeout": 5}
+          {"type": "command", "command": "\"$([ \"$OS\" = Windows_NT ] && echo py || echo python3)\" -I \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" secrets", "timeout": 5}
         ]
       },
       {
         "matcher": "Bash",
         "hooks": [
-          {"type": "command", "if": "Bash(git *)", "command": "python3 -I \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" commit", "timeout": 5}
+          {"type": "command", "if": "Bash(git *)", "command": "\"$([ \"$OS\" = Windows_NT ] && echo py || echo python3)\" -I \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" commit", "timeout": 5}
         ]
       },
       {
         "matcher": "WebSearch|WebFetch",
         "hooks": [
-          {"type": "command", "command": "python3 -I \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" web", "timeout": 5}
+          {"type": "command", "command": "\"$([ \"$OS\" = Windows_NT ] && echo py || echo python3)\" -I \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" web", "timeout": 5}
         ]
       }
     ]

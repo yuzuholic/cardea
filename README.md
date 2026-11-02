@@ -51,6 +51,20 @@ curl -fsSL https://raw.githubusercontent.com/yuzuholic/cardea/main/install.sh | 
 
 It is safe to run again at any time. Existing config is backed up, never overwritten.
 
+### Windows: `install.ps1`
+
+Links the global rules and the `tldr` and `baby` skills, registers the Serena and Basic Memory MCP
+servers and the plugins. Needs Git for Windows, Python 3, uv, Claude Code and Developer Mode
+(Settings > System > For developers) or an elevated shell. Put `BASIC_MEMORY_URL` in `.env` to
+register Basic Memory.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+pwsh -File .\install.ps1
+```
+
+Add `-Check` to report prerequisites and links without changing anything.
+
 ### The NAS: `nas/compose.yml`
 
 Runs the self-hosted services (Basic Memory, Langfuse and Obsidian) as one service,

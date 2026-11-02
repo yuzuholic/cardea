@@ -61,6 +61,27 @@ Prompts read from `/dev/tty`, not standard input, so `curl … | sh` can still a
 The whole script is wrapped so the shell reads all of it before running any of it; without
 that, Homebrew would swallow the rest of the script mid-run.
 
+## Windows
+
+`install.ps1` is the Windows counterpart. It links the global rules and the `tldr` and `baby`
+skills, registers the Serena and Basic Memory MCP servers, and installs the plugins.
+
+Prerequisites:
+
+- Git for Windows, with Git Bash
+- Python 3: `winget install Python.Python.3.13`
+- uv: `winget install astral-sh.uv`
+- Claude Code
+- Developer Mode (Settings > System > For developers), or an elevated PowerShell, so links can be created
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+`pwsh -File .\install.ps1` works the same under PowerShell 7. Add `-Check` to report
+prerequisites and links without changing anything. Basic Memory is registered only when `.env`
+holds `BASIC_MEMORY_URL`.
+
 ## After installing
 
 ```sh
