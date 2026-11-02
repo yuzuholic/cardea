@@ -73,7 +73,7 @@ def mcp_call(url, tool, arguments):
 
 def recent_notes(project):
     try:
-        with open(os.path.expanduser("~/.claude.json")) as f:
+        with open(os.path.expanduser("~/.claude.json"), encoding="utf-8") as f:
             url = json.load(f)["mcpServers"]["basic-memory"]["url"]
     except Exception:
         return ["- Basic Memory isn't configured for Claude Code; skip it."]
@@ -324,9 +324,9 @@ def attribution(command, cwd, message):
 
     if file:
         try:
-            with open(os.path.join(path, file.group(1).strip("'\""))) as f:
+            with open(os.path.join(path, file.group(1).strip("'\"")), encoding="utf-8") as f:
                 hits += [f"commit message: {w}" for line in f for w in ai_words(line)]
-        except OSError:
+        except (OSError, ValueError):
             pass
 
     # shortcut: a message written in the editor can't be seen; upgrade by reading it in a commit-msg git hook.
@@ -388,6 +388,7 @@ if __name__ == "__main__":
         if sys.argv[1] == "scan":
             scan(os.path.abspath(sys.argv[2] if len(sys.argv) > 2 else os.getcwd()))
             sys.exit(0)
+        sys.stdin.reconfigure(encoding="utf-8")
         {"session": session, "secrets": secrets, "commit": commit, "web": web}[sys.argv[1]](json.load(sys.stdin))
     except Exception:
         pass

@@ -1,0 +1,58 @@
+name: windows
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: ./tests/install.ps1
+        shell: pwsh
+      - run: ./tests/install.ps1
+        shell: powershell
+      - name: hooks.json commands run under Git Bash
+        shell: bash
+        run: |
+          fail() { echo "FAIL: $*" >&2; exit 1; }
+          command -v py >/dev/null || fail "py is not on PATH; setup-python should provide the launcher"
+
+          export CLAUDE_PLUGIN_ROOT="$(pwd -W 2>/dev/null || pwd)/plugins/cardea"
+          export CLAUDE_PLUGIN_DATA="$(mktemp -d)" CLAUDE_PROJECT_DIR="$(pwd)"
+          cmds=$(py -I -c '
+          import json
+          for groups in json.load(open("plugins/cardea/hooks/hooks.json"))["hooks"].values():
+              for g in groups:
+                  for h in g["hooks"]:
+                      print(h["command"])
+          ' | tr -d '\r')
+          [ "$(printf '%s\n' "$cmds" | wc -l)" -eq 4 ] || fail "expected 4 commands in hooks.json"
+
+          run() {
+            cmd=$(printf '%s\n' "$cmds" | grep " $1\$") || fail "no hooks.json command for $1"
+            out=$(printf '%s' "$2" | bash -c "$cmd") || fail "$1 exited non-zero"
+          }
+          denied() { run "$1" "$2"; case $out in *'"permissionDecision": "deny"'*) ;; *) fail "$1 should deny: $2" ;; esac; }
+          allowed() { run "$1" "$2"; case $out in *'"permissionDecision": "deny"'*) fail "$1 should not deny: $2" ;; esac; }
+
+          denied secrets '{"tool_name":"Read","tool_input":{"file_path":"/repo/.env"}}'
+          run secrets '{"tool_name":"Read","tool_input":{"file_path":"/repo/README.md"}}'
+          [ -z "$out" ] || fail "secrets should stay silent on README.md"
+          denied commit '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"Fix: Bad message.\""}}'
+          allowed commit '{"tool_name":"Bash","tool_input":{"command":"git status"}}'
+          allowed web '{"session_id":"s","tool_name":"WebSearch","tool_input":{"query":"grdb"}}'
+          run session '{"source":"startup"}'
+          echo "ok: hooks run under Git Bash"
