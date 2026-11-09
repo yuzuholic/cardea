@@ -34,7 +34,6 @@ which keeps them in line with the script.
 
 | Name | What it does | Command |
 |---|---|---|
-| <Tool icon="serena.png">`serena`</Tool> | Understands code by symbol, not by text | `uvx --from git+…/serena@v2.1.0 serena start-mcp-server --context claude-code --project-from-cwd` |
 | <Tool icon="xcode.svg" mono>`xcodebuild`</Tool> | Builds, tests and runs iOS apps | `npx -y xcodebuildmcp@2.7.0 mcp` |
 | <Tool icon="swift.svg" mono>`swiftlens`</Tool> | Swift symbol lookups | `uvx swiftlens@0.2.14` |
 | <Tool icon="xcode.svg" mono>`xcode`</Tool> | Apple's bridge into a running Xcode | `xcrun mcpbridge` |
@@ -64,14 +63,14 @@ for them, so unlike the rules in `CLAUDE.md` they cost nothing until they are us
 
 | For | Skills |
 |---|---|
-| The self-hosted stack | `basic-memory`, `langfuse`, `obsidian`, `plannotator`, `serena`, `graphify` |
+| The self-hosted stack | `basic-memory`, `langfuse`, `obsidian`, `plannotator`, `graphify` |
 | Looking things up | `retrieval-order` |
 | iOS | `driving-ios-simulator-with-axe`, `rendering-swiftui-previews`, `sim-clone-restore`, `grdb` |
 | Reviews and releases | `panel`, `comment-audit`, `pre-commit-audit`, `semantic-commit`, `local-merge`, `post-merge-sweep`, `release-changelog` |
 | Recommendations | `recsys` |
 
 `retrieval-order` sets where an agent looks before it asks: the session, then the rules and
-memory, Basic Memory, the active plan, graphify, Serena and the code, git history, tests and
+memory, Basic Memory, the active plan, graphify, the code, git history, tests and
 builds, skills and offline docs, the web, and you last. Notes and history answer why
 something is the way it is; the code and live results answer what it is now, and win when a
 note is out of date.

@@ -103,7 +103,7 @@ def session(data):
     lines = [
         "cardea session note:",
         "- Look things up in the order the retrieval-order skill sets: this session, rules and memory, "
-        "Basic Memory, the active plan, graphify, Serena and the code, git history, live evidence, "
+        "Basic Memory, the active plan, graphify, the code, git history, live evidence, "
         "skills and docs, then the web, and the user last. Stop at the first source that answers.",
         f'- Basic Memory project for this repo: "{project}" (pass it as project).',
         "- graphify-out/ exists here: start codebase questions with the graphify skill." if graph

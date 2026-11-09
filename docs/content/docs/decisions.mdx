@@ -279,10 +279,16 @@ column heading to sort.
       why: <><code>install.ps1</code> is a separate native script, not a WSL setup and not a port of the bash installer.</>,
     },
     {
+      title: 'Serena',
+      area: 'Tools',
+      status: 'Removed',
+      why: <>It read and edited code by symbol through a language server, but gave no benefit in practice.</>,
+    },
+    {
       title: 'Core set on Windows',
       area: 'Install',
       status: 'Adopted',
-      why: <>It installs the global rules, the tldr and baby skills, the cardea plugin, the basic-memory and serena MCP servers, the marketplace plugins except apple-skills, and the marimo and graphify skills. plannotator and langfuse are left out because they need curl-piped binaries or <code>.env</code> setup. <code>uv</code> is required because serena and graphify use it.</>,
+      why: <>It installs the global rules, the tldr and baby skills, the cardea plugin, the basic-memory MCP server, the marketplace plugins except apple-skills, and the marimo and graphify skills. plannotator and langfuse are left out because they need curl-piped binaries or <code>.env</code> setup. <code>uv</code> is required because graphify uses it.</>,
     },
     {
       title: 'Symlinks on Windows, with Developer Mode',

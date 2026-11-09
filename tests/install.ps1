@@ -39,13 +39,13 @@ function New-Stubs($Dir) {
     New-Stub $Dir 'claude' @(
         '@echo off',
         'if "%1 %2 %3"=="plugin list --json" (echo [{"id": "superpowers@superpowers-marketplace"}] & exit /b 0)',
-        'if "%1 %2"=="mcp list" (echo serena: uvx - Connected & exit /b 0)',
+        'if "%1 %2"=="mcp list" (echo basic-memory: http - Connected & exit /b 0)',
         'echo claude %* >> "%FAKE_LOG%"'
     ) @(
         '#!/bin/sh',
         'case "$*" in',
         '  "plugin list --json") echo ''[{"id": "superpowers@superpowers-marketplace"}]''; exit 0 ;;',
-        '  "mcp list") echo "serena: uvx - Connected"; exit 0 ;;',
+        '  "mcp list") echo "basic-memory: http - Connected"; exit 0 ;;',
         'esac',
         'echo "claude $*" >> "$FAKE_LOG"'
     )
@@ -155,7 +155,6 @@ try {
     Assert-Linked '.claude/CLAUDE.md' 'claude/CLAUDE.md'
     Assert-Linked '.claude/skills/tldr' 'claude/skills/tldr'
     Assert-Linked '.claude/skills/baby' 'claude/skills/baby'
-    Assert-Called 'mcp add -s user serena -- uvx --from git+https://github.com/oraios/serena@v2.1.0'
     Assert-Called 'mcp add -s user --transport http basic-memory http://127.0.0.1:8766/mcp'
     Assert-Called "plugin install cardea --marketplace $Repo -y"
     Assert-Called 'plugin update superpowers@superpowers-marketplace'

@@ -1,6 +1,6 @@
 ---
 name: retrieval-order
-description: "The order to look things up in: session, rules, Basic Memory, the active plan, graphify, Serena and the code, git history, live evidence, docs, the web, then the user. Use before any search or lookup: finding code, answering how or why something works, checking a past decision, looking up an API or a fact, or before asking the user a question."
+description: "The order to look things up in: session, rules, Basic Memory, the active plan, graphify, the code, git history, live evidence, docs, the web, then the user. Use before any search or lookup: finding code, answering how or why something works, checking a past decision, looking up an API or a fact, or before asking the user a question."
 ---
 
 # Retrieval order
@@ -17,7 +17,7 @@ Asking the user is last.
 | 3 | **Basic Memory** | Past decisions, constraints, gotchas: the *why* | `recent_activity`, then `search_notes` in the project (see `basic-memory`). |
 | 4 | **The active plan** | What we agreed to do right now | The approved plan in this session, and the project's `plans/` in Basic Memory. |
 | 5 | **graphify** | Where to look in a codebase you don't know yet | `graphify-out/` if it exists (see `graphify`). |
-| 6 | **Serena, then the code** | What actually exists: the *what* | Serena for a symbol you can name (see `serena`); Grep, Glob and Read for text, config and non-code files. |
+| 6 | **The code** | What actually exists: the *what* | Grep, Glob and Read. |
 | 7 | **Git history and GitHub** | Why the code is this way, and when it changed | `git log -S`, `git log -p <file>`, `git blame`; `gh pr` and `gh issue` for the discussion. |
 | 8 | **Live evidence** | What really happens when it runs | Run the test, build or app: XcodeBuildMCP, the simulator, `gh run view --log-failed` for CI. |
 | 9 | **Skills and offline docs** | How to do a kind of task; Apple APIs | The skill that matches the task; the apple-skills references before the web. |

@@ -3,7 +3,7 @@
 case "$*" in
   "--version") echo "2.1.310 (Claude Code)" ;;
   "plugin list --json") echo '[{"id": "plannotator@plannotator"}]' ;;
-  "mcp list") echo "serena: uvx ... - ✔ Connected"; echo "other: x - ✔ Connected" ;;
+  "mcp list") echo "xcodebuild: npx ... - ✔ Connected"; echo "other: x - ✔ Connected" ;;
   *configure*) echo "claude $* <<< $(cat)" >> "$FAKE_LOG"; exit 0 ;;
 esac
 echo "claude $*" >> "$FAKE_LOG"

@@ -53,8 +53,8 @@ It is safe to run again at any time. Existing config is backed up, never overwri
 
 ### Windows: `install.ps1`
 
-Links the global rules and the `tldr` and `baby` skills, registers the Serena and Basic Memory MCP
-servers and the plugins. Needs Git for Windows, Python 3, uv, Claude Code and Developer Mode
+Links the global rules and the `tldr` and `baby` skills, registers the Basic Memory MCP server
+and the plugins. Needs Git for Windows, Python 3, uv, Claude Code and Developer Mode
 (Settings > System > For developers) or an elevated shell. Put `BASIC_MEMORY_URL` in `.env` to
 register Basic Memory.
 
@@ -91,11 +91,11 @@ claude plugin marketplace add yuzuholic/cardea
 claude plugin install cardea@cardea
 ```
 
-**19 skills**
+**18 skills**
 
 | For | Skills |
 |---|---|
-| The self-hosted stack | `basic-memory`, `langfuse`, `obsidian`, `plannotator`, `serena`, `graphify` |
+| The self-hosted stack | `basic-memory`, `langfuse`, `obsidian`, `plannotator`, `graphify` |
 | Looking things up | `retrieval-order` |
 | iOS | `driving-ios-simulator-with-axe`, `rendering-swiftui-previews`, `sim-clone-restore`, `grdb` |
 | Reviews and releases | `panel`, `comment-audit`, `pre-commit-audit`, `semantic-commit`, `local-merge`, `release-changelog` |
@@ -123,7 +123,7 @@ or for a quick refresh run `claude plugin update cardea@cardea`.
 | Plan review | [Plannotator](https://github.com/backnotprop/plannotator) |
 | Tracing | [Langfuse](https://github.com/langfuse/langfuse), self-hosted |
 | Notes | [Basic Memory](https://github.com/basicmachines-co/basic-memory), read and edited in the browser with [Obsidian](https://obsidian.md) |
-| Code understanding | [Serena](https://github.com/oraios/serena), [graphify](https://pypi.org/project/graphifyy/) |
+| Code understanding | [graphify](https://pypi.org/project/graphifyy/) |
 | iOS | [XcodeBuildMCP](https://github.com/cameroncooke/XcodeBuildMCP), [SwiftLens](https://github.com/swiftlens/swiftlens), Xcode's `mcpbridge`, [xcode-build-server](https://github.com/SoundBlaster/xcode-build-server) |
 | Isolation | [container-use](https://github.com/dagger/container-use) |
 | Terminal | [herdr](https://github.com/ogulcancelik/herdr), [gum](https://github.com/charmbracelet/gum) for the installer |

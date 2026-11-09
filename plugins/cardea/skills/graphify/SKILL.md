@@ -14,8 +14,7 @@ full command reference. This note covers how it fits here.
 
 - A codebase you don't know yet, or a question that spans many files ("what touches sync?",
   "how does a chapter get from a source into the library?").
-- Not for a single file or a symbol you can name; Serena (`find_symbol`,
-  `find_referencing_symbols`) answers those faster.
+- Not for a single file or a symbol you can name; Grep and Read answer those faster.
 
 ## Building and updating
 

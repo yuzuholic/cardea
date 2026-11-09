@@ -117,7 +117,7 @@ fi
 cd "$REPO_DIR"
 ENV_FILE="$REPO_DIR/.env"
 # the user-scope MCP servers cardea owns; anything else in claude code is left alone.
-MCP_NAMES='serena|container-use|xcodebuild|swiftlens|xcode|basic-memory'
+MCP_NAMES='container-use|xcodebuild|swiftlens|xcode|basic-memory'
 
 # --- probes ----------------------------------------------------------------
 # any http status at all means something answered. an MCP endpoint may well reply
@@ -435,7 +435,6 @@ mcp() {
   claude mcp remove -s user "$1" >/dev/null 2>&1 || true
   if claude mcp add-json -s user "$1" "$2" >/dev/null; then ok "mcp: $1"; else bad "mcp: $1 — could not register"; fi
 }
-mcp serena        '{"type":"stdio","command":"uvx","args":["--from","git+https://github.com/oraios/serena@v2.1.0","serena","start-mcp-server","--context","claude-code","--project-from-cwd"]}'
 mcp container-use '{"type":"stdio","command":"container-use","args":["stdio"]}'
 mcp xcodebuild    '{"type":"stdio","command":"npx","args":["-y","xcodebuildmcp@2.7.0","mcp"],"env":{"XCODEBUILDMCP_SENTRY_DISABLED":"true"}}'
 mcp swiftlens     '{"type":"stdio","command":"uvx","args":["swiftlens@0.2.14"]}'
