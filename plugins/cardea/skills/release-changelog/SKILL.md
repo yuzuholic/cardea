@@ -57,11 +57,11 @@ Choosing what goes in:
 Aim for three to six additions or changes and two to four meaningful fixes, under `Added`, `Changed`
 and `Fixed`.
 
-Voice - quiet confidence: specific, calm, human, slightly warm.
+Voice: the `app-copy` rules - state the condition, action or result outright.
 
 - Lead with the ability or visible outcome: `Filter chapters by source, scanlator or language.`
 - Present tense for capabilities, symptom language for fixes:
-  `Leaving the reader could forget the chapter you had just finished.`
+  `The chapter you had just finished was not marked as read after leaving the reader.`
 - One idea per note. A second sentence only to answer the immediate practical question.
 - Concrete screens and actions over implementation names.
 - Avoid `implemented`, `refactored`, `migrated`, `various improvements`, `bug fixes`, `seamless`,

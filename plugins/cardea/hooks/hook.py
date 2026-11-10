@@ -1,4 +1,4 @@
-"""cardea's claude code hooks: python3 hook.py session|secrets|commit|web, hook json on stdin,
+"""cardea's claude code hooks: python3 hook.py session|secrets|commit|web|handoff, hook json on stdin,
 or python3 hook.py scan [dir] to list AI mentions in a working tree.
 every hook fails open: any error exits 0 with no output, so a broken hook never blocks."""
 import json
@@ -10,7 +10,6 @@ import sys
 import time
 import urllib.request
 
-ALLOWED_ENV = {".env.example", ".env.sample", ".env.template"}
 READERS = {"cat", "less", "more", "head", "tail", "grep", "egrep", "fgrep", "rg", "sed", "awk",
            "gawk", "bat", "source", ".", "nl", "tac", "strings", "xxd", "od", "hexdump", "base64"}
 STDOUT = {"/dev/stdout", "/dev/fd/1", "/dev/tty", "-"}
@@ -21,6 +20,9 @@ AI_SHOWN = 20
 BM_TIMEOUT = 1.5
 NOTES = 5
 STATE_DAYS = 7
+# shortcut: 65% of the 300k autoCompactWindow in settings.json, ten points before the 75% compaction; derive from settings if they change.
+HANDOFF_TOKENS = 195_000
+TAIL_BYTES = 1_000_000
 
 
 def emit(event, **fields):
@@ -120,10 +122,7 @@ def session(data):
 
 def secret(word):
     name = os.path.basename(word.rstrip("/").split("=")[-1].strip("'\""))
-    if name in ALLOWED_ENV:
-        return False
-    return bool(re.fullmatch(r"\.env([.*?\[].*)?", name)
-                or re.fullmatch(r"id_(rsa|ed25519|ecdsa|dsa)", name)
+    return bool(re.fullmatch(r"id_(rsa|ed25519|ecdsa|dsa)", name)
                 or re.search(r"\.(pem|key|p12|p8)$", name))
 
 
@@ -153,9 +152,8 @@ def secrets(data):
     else:
         hit = next((p for p in (args.get("file_path"), args.get("path"), args.get("glob")) if p and secret(p)), None)
     if hit:
-        deny(f"cardea: {hit} holds secrets (a .env file or a private key), so no tool may read or print it. "
-             "Secrets are referenced through environment variables only: use the variable name, and read "
-             ".env.example for the names. Don't try another tool or command to get at it.")
+        deny(f"cardea: {hit} is a private key, so no tool may read or print it. "
+             "Don't try another tool or command to get at it.")
 
 
 # commit message
@@ -360,27 +358,78 @@ def scan(path):
     print("\n".join(hits) if hits else "no AI mentions")
 
 
-# web nudge
+# once-a-session nudges
 
-def web(data):
+def first_time(data, kind):
+    """true the first time a session asks for this kind of nudge; prunes stale state."""
     sid = re.sub(r"[^\w-]", "", data.get("session_id") or "")
+
     if not sid:
-        return
-    state = os.path.join(os.environ.get("CLAUDE_PLUGIN_DATA") or "/tmp/cardea", "web-nudged")
+        return False
+
+    state = os.path.join(os.environ.get("CLAUDE_PLUGIN_DATA") or "/tmp/cardea", kind)
     os.makedirs(state, exist_ok=True)
+
     try:
         os.close(os.open(os.path.join(state, sid), os.O_CREAT | os.O_EXCL | os.O_WRONLY))
     except FileExistsError:
-        return
+        return False
+
     cutoff = time.time() - STATE_DAYS * 86400
+
     for name in os.listdir(state):
         p = os.path.join(state, name)
+
         if os.path.getmtime(p) < cutoff:
             os.remove(p)
+
+    return True
+
+
+def web(data):
+    if not first_time(data, "web-nudged"):
+        return
+
     emit("PreToolUse", additionalContext=(
         "cardea: before relying on the web, check Basic Memory, the code and the git history first, "
         "as the retrieval-order skill sets out. The web is for current versions, external APIs and "
         "anything new. This reminder shows once per session."))
+
+
+def context_tokens(path):
+    """the context size of the latest main-thread reply, read from the end of the transcript."""
+    with open(path, "rb") as f:
+        f.seek(0, os.SEEK_END)
+        f.seek(max(0, f.tell() - TAIL_BYTES))
+        lines = f.read().decode(errors="replace").splitlines()
+
+    for line in reversed(lines):
+        if '"usage"' not in line:
+            continue
+
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            continue
+
+        usage = (entry.get("message") or {}).get("usage")
+
+        if usage and not entry.get("isSidechain"):
+            return sum(usage.get(k) or 0 for k in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))
+
+    return 0
+
+
+def handoff(data):
+    path = data.get("transcript_path")
+
+    if not path or context_tokens(path) < HANDOFF_TOKENS or not first_time(data, "handoff-nudged"):
+        return
+
+    emit("UserPromptSubmit", additionalContext=(
+        f"cardea: this session's context is past {HANDOFF_TOKENS // 1000}k tokens, close to autocompact. "
+        "After answering this message, propose a handoff to a fresh session with the handoff skill, and "
+        "run it only if the user agrees. This reminder shows once per session."))
 
 
 if __name__ == "__main__":
@@ -389,6 +438,6 @@ if __name__ == "__main__":
             scan(os.path.abspath(sys.argv[2] if len(sys.argv) > 2 else os.getcwd()))
             sys.exit(0)
         sys.stdin.reconfigure(encoding="utf-8")
-        {"session": session, "secrets": secrets, "commit": commit, "web": web}[sys.argv[1]](json.load(sys.stdin))
+        {"session": session, "secrets": secrets, "commit": commit, "web": web, "handoff": handoff}[sys.argv[1]](json.load(sys.stdin))
     except Exception:
         pass

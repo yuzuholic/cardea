@@ -1,6 +1,6 @@
 #!/bin/sh
 # the plugin's hooks, fed sample hook input: secrets and bad commit messages are denied, the
-# rest pass silently, the web nudge shows once per session, and the session note survives an
+# rest pass silently, the web and handoff nudges show once per session, and the session note survives an
 # unreachable basic memory. tests/fakes/nas.py stands in for basic memory. needs python3, git.
 set -eu
 cd "$(dirname "$0")/.."
@@ -26,23 +26,24 @@ allowed() { run "$1" "$2"; [ -z "$out" ] || fail "$1 should stay silent: $2"; }
 says()    { case $out in *"$1"*) ;; *) fail "output should mention: $1" ;; esac; }
 
 # secrets: files by tool, then the obvious bash readers.
-for f in .env .env.local .env.production id_rsa id_ed25519 server.pem cert.p12 tls.key AuthKey_ABC.p8; do
+for f in id_rsa id_ed25519 server.pem cert.p12 tls.key AuthKey_ABC.p8; do
   denied secrets "$(tool s Read file_path "/repo/$f")"
 done
-says 'environment variables only'
-for f in .env.example .env.sample .env.template id_rsa.pub README.md; do
+says 'private key'
+for f in .env .env.local .env.example id_rsa.pub README.md; do
   allowed secrets "$(tool s Read file_path "/repo/$f")"
 done
-denied secrets "$(tool s Grep path /repo/.env)"
-denied secrets "$(tool s Edit file_path /repo/.env.local)"
-for c in 'cat .env' 'less .env.local' 'head -5 .env.production' 'tail -f .env' 'grep KEY .env' \
-         "sed -n 1p .env" "awk '{print}' .env" 'bat .env' 'source .env' '. ./.env' 'cp .env /dev/stdout' \
-         'cat < .env' 'echo "$(cat .env)"' 'cd app && cat ~/.ssh/id_ed25519' 'cat .env*' 'sudo cat /etc/ssl/server.key' \
-         'FOO=1 head "config/.env"'; do
+denied secrets "$(tool s Grep path /repo/server.pem)"
+denied secrets "$(tool s Edit file_path /repo/tls.key)"
+allowed secrets "$(tool s Edit file_path /repo/.env.local)"
+for c in 'cat server.pem' 'less tls.key' 'head -5 cert.p12' 'tail -f id_rsa' 'grep KEY server.pem' \
+         "sed -n 1p tls.key" "awk '{print}' tls.key" 'bat id_ed25519' 'source tls.key' 'cp server.pem /dev/stdout' \
+         'cat < server.pem' 'echo "$(cat tls.key)"' 'cd app && cat ~/.ssh/id_ed25519' 'sudo cat /etc/ssl/server.key' \
+         'FOO=1 head "config/AuthKey_ABC.p8"'; do
   denied secrets "$(tool s Bash command "$c")"
 done
-for c in 'cat .env.example' 'ls -la' 'cat ~/.ssh/id_rsa.pub' 'cp .env.example .env' 'source .venv/bin/activate' \
-         'git status' 'echo .env' 'grep -r TODO src'; do
+for c in 'cat .env' 'source .env' 'grep KEY .env.local' 'ls -la' 'cat ~/.ssh/id_rsa.pub' 'cp .env.example .env' \
+         'source .venv/bin/activate' 'git status' 'grep -r TODO src'; do
   allowed secrets "$(tool s Bash command "$c")"
 done
 
@@ -118,6 +119,16 @@ run web "$(tool one WebSearch query 'grdb observation')"; says 'retrieval-order'
 allowed web "$(tool one WebFetch url https://example.com)"
 run web "$(tool two WebFetch url https://example.com)"; says 'once per session'
 
+# handoff: silent below the threshold or when only a subagent is past it, then once per session.
+usage() { printf '{"type": "assistant", "isSidechain": %s, "message": {"usage": {"input_tokens": 5, "cache_creation_input_tokens": 1000, "cache_read_input_tokens": %s}}}\n' "$1" "$2"; }
+prompt() { printf '{"session_id": "%s", "transcript_path": "%s", "prompt": "hi"}' "$1" "$work/transcript.jsonl"; }
+{ usage false 100000; usage true 250000; } > "$work/transcript.jsonl"
+allowed handoff "$(prompt h1)"
+usage false 200000 >> "$work/transcript.jsonl"
+run handoff "$(prompt h1)"; says 'handoff skill'; says 'past 195k tokens'
+allowed handoff "$(prompt h1)"
+allowed handoff '{"session_id": "h2", "prompt": "hi"}'
+
 # session: a repo with a project and graphify-out, a worktree of it, one without a project,
 # then basic memory unreachable and not configured.
 mkdir -p "$work/home" "$work/Demo/graphify-out" "$work/Other"
@@ -138,9 +149,9 @@ rm "$work/home/.claude.json"
 session "$work/Demo"; says "isn't configured"
 
 # every hook fails open on input it can't read.
-for h in session secrets commit web; do allowed "$h" 'not json'; done
+for h in session secrets commit web handoff; do allowed "$h" 'not json'; done
 
-# hooks.json: four entries, none tied to a shell; each command runs as written on the Mac, and
+# hooks.json: five entries, none tied to a shell; each command runs as written on the Mac, and
 # with OS=Windows_NT it launches py instead of python3.
 root=$(pwd)/plugins/cardea
 cmds=$(python3 -c '
@@ -155,7 +166,7 @@ mkdir -p "$work/stub"
 printf '#!/bin/sh\necho called >> "%s/py.log"\nexec python3 "$@"\n' "$work/stub" > "$work/stub/py"
 chmod +x "$work/stub/py"
 count=0
-secret=$(tool s Read file_path /repo/.env)
+secret=$(tool s Read file_path /repo/server.pem)
 while IFS= read -r line; do
   cmd=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).replace("${CLAUDE_PLUGIN_ROOT}", sys.argv[2]))' "$line" "$root")
   mac=$(printf '%s' "$secret" | env -u OS HOME="$work/home" CLAUDE_PLUGIN_DATA="$work/data-mac" sh -c "$cmd") || fail "hooks.json entry exited non-zero: $cmd"
@@ -165,13 +176,13 @@ while IFS= read -r line; do
   [ "$mac" = "$win" ] || fail "py and python3 results differ: $cmd"
 
   case $cmd in
-    *' secrets') case $mac in *'"permissionDecision": "deny"'*) ;; *) fail "the secrets entry should deny .env" ;; esac ;;
+    *' secrets') case $mac in *'"permissionDecision": "deny"'*) ;; *) fail "the secrets entry should deny a private key" ;; esac ;;
   esac
 
   count=$((count + 1))
 done <<EOF
 $cmds
 EOF
-[ "$count" -eq 4 ] || fail "expected 4 entries in hooks.json, found $count"
+[ "$count" -eq 5 ] || fail "expected 5 entries in hooks.json, found $count"
 
 echo "ok: hooks pass"

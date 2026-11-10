@@ -285,6 +285,18 @@ column heading to sort.
       why: <>It read and edited code by symbol through a language server, but gave no benefit in practice.</>,
     },
     {
+      title: 'Script files instead of nested shell commands',
+      area: 'Rules',
+      status: 'Adopted',
+      why: <>Agents put nested or long multi-step commands in a script file, so each Bash call can be checked before it runs. One-time scripts live in <code>/tmp</code>.</>,
+    },
+    {
+      title: 'Reads outside the working directories allowed',
+      area: 'Rules',
+      status: 'Adopted',
+      why: <><code>blockReadsOutsideWorkingDirectories</code> prompted on plain commands that touched paths outside the project, and on any command Claude Code could not analyze, which allow rules do not cover. It was removed. The cardea hook still blocks reads of secrets such as <code>.env</code> files and private keys.</>,
+    },
+    {
       title: 'Core set on Windows',
       area: 'Install',
       status: 'Adopted',
@@ -307,6 +319,24 @@ column heading to sort.
       area: 'Install',
       status: 'Adopted',
       why: <>A <code>windows-latest</code> GitHub Actions job runs the installer tests under PowerShell 7 and 5.1 and the real hooks under Git Bash. Runners are elevated, so the unelevated Developer Mode path is checked only on a real machine.</>,
+    },
+    {
+      title: 'App copy states things outright',
+      area: 'Rules',
+      status: 'Adopted',
+      why: <>Copy that read as machine-written came from loose verbs such as "stays", not from particular words, so the <code>app-copy</code> skill uses a substitution test instead of a banned list: a loose verb is replaced with "is", "is not" or the actual operation when that is more exact. It replaces the changelog's "slightly warm" voice, and the pre-commit audit applies it when a project has no copy rules of its own. Decided 2026-11-10.</>,
+    },
+    {
+      title: 'Hand off to a fresh session before autocompact',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>Autocompact summarises at the limit and drops details. A hook nudges once a session passes 195k tokens, ten points before autocompact, and the <code>handoff</code> skill can also be asked for by hand. It proposes first, pastes a complete summary into a new Claude session in a new herdr tab, and closes the old pane only after the new session replies with its to-do list, so a failed start never loses the only live copy. The new session opens in the old one's folder, and the script accepts Claude Code's folder-trust prompt there, because the old session already works in that folder; sessions run from the home folder hit that prompt on every start. Decided 2026-11-10.</>,
+    },
+    {
+      title: 'Anti-slop skills and AI-detector humanizers',
+      area: 'Tools',
+      status: 'Rejected',
+      why: <>The popular ones target blog and marketing prose or detector scores, and a word list cannot tell a figurative "stays" from a literal one. The installed humanizer already covers general prose. UI-specific linters such as <code>strunk</code> are untested.</>,
     },
     {
       title: 'Beads',

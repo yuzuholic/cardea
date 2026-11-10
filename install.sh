@@ -521,7 +521,7 @@ if has_gum; then
    sign in with your claude subscription (interactive)
 2. per iOS project
    $(paint --bold -- 'xcode-build-server config -project X.xcodeproj -scheme X')
-3. on the NAS, in /mnt/main/docker/lab
+3. on the NAS, in /mnt/main/Docker/lab
    $(paint --bold -- 'sudo docker compose up -d')
    $(paint --faint -- 'https://yuzuholic.github.io/cardea/docs/nas')
 
@@ -531,7 +531,7 @@ else
   cat <<EOF
   1. claude auth login                   sign in with your claude subscription (interactive)
   2. per iOS project:                    xcode-build-server config -project X.xcodeproj -scheme X
-  3. on the NAS:                         sudo docker compose up -d in /mnt/main/docker/lab
+  3. on the NAS:                         sudo docker compose up -d in /mnt/main/Docker/lab
                                          (see https://yuzuholic.github.io/cardea/docs/nas)
 
   re-run anytime. ${D}./install.sh --check${R} probes without changing anything.

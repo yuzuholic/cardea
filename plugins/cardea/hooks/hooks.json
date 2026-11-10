@@ -1,5 +1,5 @@
 {
-  "description": "cardea: a session note on where to look things up, a block on reading secrets, the commit message format, an approval prompt for commits that mention an AI tool or company, and a once-a-session nudge before the web.",
+  "description": "cardea: a session note on where to look things up, a block on reading private keys, the commit message format, an approval prompt for commits that mention an AI tool or company, a once-a-session nudge before the web, and a once-a-session handoff nudge near autocompact.",
   "hooks": {
     "SessionStart": [
       {
@@ -26,6 +26,13 @@
         "matcher": "WebSearch|WebFetch",
         "hooks": [
           {"type": "command", "command": "\"$([ \"$OS\" = Windows_NT ] && echo py || echo python3)\" -I \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" web", "timeout": 5}
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {"type": "command", "command": "\"$([ \"$OS\" = Windows_NT ] && echo py || echo python3)\" -I \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" handoff", "timeout": 5}
         ]
       }
     ]

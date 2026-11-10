@@ -91,14 +91,15 @@ claude plugin marketplace add yuzuholic/cardea
 claude plugin install cardea@cardea
 ```
 
-**18 skills**
+**20 skills**
 
 | For | Skills |
 |---|---|
 | The self-hosted stack | `basic-memory`, `langfuse`, `obsidian`, `plannotator`, `graphify` |
 | Looking things up | `retrieval-order` |
+| Sessions | `handoff` |
 | iOS | `driving-ios-simulator-with-axe`, `rendering-swiftui-previews`, `sim-clone-restore`, `grdb` |
-| Reviews and releases | `panel`, `comment-audit`, `pre-commit-audit`, `semantic-commit`, `local-merge`, `release-changelog` |
+| Reviews and releases | `panel`, `comment-audit`, `pre-commit-audit`, `semantic-commit`, `local-merge`, `post-merge-sweep`, `release-changelog`, `app-copy` |
 | Recommendations | `recsys` |
 
 **5 agents**: the design panel's UX designer, average chud and power user, which the `panel`

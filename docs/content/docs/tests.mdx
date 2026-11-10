@@ -17,7 +17,7 @@ stand-in tools where the real ones would install things.
 |---|---|---|
 | `install` | The whole of `install.sh` | expect, python3, curl, git; gum for the gum half |
 | `plugin` | The Cardea plugin and its marketplace | Claude Code |
-| `hooks` | The plugin's four hooks | python3, git, curl |
+| `hooks` | The plugin's five hooks | python3, git, curl |
 | `vendor-skills` | The herdr, graphify and marimo-notebook skills | herdr, graphify, network |
 | `nas` | The NAS launcher and the stack it runs | Docker |
 
@@ -55,7 +55,8 @@ skill and agent has a name matching its file and a description.
 Feeds the plugin's hooks the same input Claude Code would send. It checks that secrets and
 badly formed commit messages are blocked, that commits mentioning an AI tool or company are
 asked about rather than blocked, that everything else passes quietly, that the web reminder
-shows once per session, and that the session note still works when Basic Memory is unreachable.
+shows once per session, that the handoff reminder shows once and only past its token
+threshold, and that the session note still works when Basic Memory is unreachable.
 A small fake NAS stands in for Basic Memory.
 
 ## vendor-skills

@@ -25,7 +25,8 @@ services:
 
   # basic memory — the agents' notes. the sqlite index lives in a named volume because
   # sqlite corrupts on an SMB/NFS share; the markdown in kb/ is fine there. kb/ must be
-  # writable by uid 1000 (appuser), or the server starts and then stops serving.
+  # writable by BASIC_MEMORY_USER (default 1000:1000, appuser), or the server starts and
+  # then stops serving.
   #
   # every top-level folder in kb/ is a project, registered at each start, so a new project
   # is just a new folder and a restart. adding a registered project again is a no-op.
@@ -35,6 +36,7 @@ services:
   basic-memory:
     image: ghcr.io/basicmachines-co/basic-memory:0.24.1
     container_name: basic-memory
+    user: "${BASIC_MEMORY_USER:-1000:1000}"
     restart: unless-stopped
     command:
       - sh
@@ -51,10 +53,13 @@ services:
     environment:
       # projects may only live under kb/; the image's default root is its own scratch space.
       BASIC_MEMORY_PROJECT_ROOT: /app/kb
+      # a uid missing from the image's passwd would get HOME=/, outside the volume below.
+      HOME: /home/appuser
     volumes:
       - ${CARDEA_KB:-./kb}:/app/kb
       # the whole home, not ~/.basic-memory: the image has no such folder, so a fresh volume
-      # there would be root-owned and unwritable. home exists, owned by appuser.
+      # there would be root-owned and unwritable. home exists, owned by appuser; with another
+      # BASIC_MEMORY_USER, chown the volume to it first.
       - basic_memory_home:/home/appuser
 
   # obsidian — the desktop app streamed to a browser at https://truenas.local:3001. it
@@ -72,9 +77,10 @@ services:
     ports:
       - "3001:3001"
     environment:
-      # uid 1000 owns kb/, so edits made here stay writable for basic memory.
-      PUID: 1000
-      PGID: 1000
+      # must share a group with BASIC_MEMORY_USER that can write kb/, so edits made here stay
+      # writable for basic memory.
+      PUID: ${OBSIDIAN_PUID:-1000}
+      PGID: ${OBSIDIAN_PGID:-1000}
       TZ: Australia/Sydney
       # an empty PASSWORD means no login at all, so compose refuses to run without both.
       CUSTOM_USER: ${OBSIDIAN_USER:?set OBSIDIAN_USER in .env}
