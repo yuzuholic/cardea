@@ -1,7 +1,8 @@
 #!/bin/sh
-# install the skills that herdr, graphify and marimo ship themselves. herdr's and graphify's are
-# generated from the installed binaries so they match the version on this machine; marimo's
-# notebook skill is copied from marimo-team/skills. rerun after updating any of them.
+# install the skills that herdr, graphify, marimo and langfuse ship themselves. herdr's and
+# graphify's are generated from the installed binaries so they match the version on this
+# machine; marimo's notebook skill and langfuse's skill are copied from their skills repos.
+# rerun after updating any of them.
 #
 #   scripts/vendor-skills.sh [skills dir]      default: ~/.claude/skills
 #
@@ -54,6 +55,18 @@ if git clone -q --depth 1 https://github.com/marimo-team/skills "$scratch/repo" 
   echo "marimo-notebook skill → $DEST/marimo-notebook"
 else
   echo "marimo: could not fetch marimo-team/skills" >&2; FAILED=1
+fi
+rm -rf "$scratch"
+
+# langfuse publishes its skill the same way; the folder carries a references/ directory too.
+scratch=$(mktemp -d)
+if git clone -q --depth 1 https://github.com/langfuse/skills "$scratch/repo" 2>/dev/null &&
+   [ -s "$scratch/repo/skills/langfuse/SKILL.md" ]; then
+  rm -rf "$DEST/langfuse"
+  mv "$scratch/repo/skills/langfuse" "$DEST/langfuse"
+  echo "langfuse skill → $DEST/langfuse"
+else
+  echo "langfuse: could not fetch langfuse/skills" >&2; FAILED=1
 fi
 rm -rf "$scratch"
 

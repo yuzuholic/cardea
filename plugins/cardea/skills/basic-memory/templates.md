@@ -267,26 +267,9 @@ Part of [[<Parent portal>]]
 ## Diagrams
 
 Mermaid diagrams render natively in Obsidian. Add one when a page describes a flow, a sequence
-of calls, a state machine, a schema or an architecture, and the picture is clearer than the
-prose alone. A diagram supports the text and never replaces it.
-
-| Rule | Detail |
-|---|---|
-| Type by content | `flowchart` for a process or decision path, `sequenceDiagram` for interactions over time, `stateDiagram-v2` for state machines, `erDiagram` for tables and keys, `flowchart LR` with `subgraph`s for architecture at the C4 container level |
-| Direction | `LR` for pipelines and architecture, `TD` for hierarchies and decision trees |
-| Size | At most about 12 nodes. Split a larger picture into an overview and a drill-down |
-| Labels | Sentence case, one to four words, real names. Code names go in quotes. Label every edge that is not obvious with a verb: `-->|pushes|` |
-| Shapes | `[ ]` component, `[( )]` storage, `( )` start or end, `{ }` decision |
-| Styling | None. No colours, `classDef` or `style`; the theme handles dark and light mode, and colour never carries meaning |
-| Placement | Inside the section it explains, after a sentence that says what it shows |
-| Links | Links inside a diagram are not indexed by Basic Memory and do not appear in the graph, so every page a diagram names is also linked in the surrounding prose |
+of calls, a state machine, a schema or an architecture, and follow the `mermaid` skill's rules.
+One rule is particular to notes: links inside a diagram are not indexed by Basic Memory and do
+not appear in the graph, so every page a diagram names is also linked in the surrounding prose.
 
 Diagrams belong mostly in reference, plan and area pages, and rarely in decisions, gotchas or
 constraints.
-
-```mermaid
-flowchart LR
-    Reader["Reader"] -->|marks read| Queue[("Push queue")]
-    Queue -->|wakes| Syncer["TrackerSyncer"]
-    Syncer -->|"max(remote, local)"| Tracker("Tracker service")
-```

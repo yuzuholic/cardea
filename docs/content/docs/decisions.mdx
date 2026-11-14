@@ -333,6 +333,12 @@ column heading to sort.
       why: <>Autocompact summarises at the limit and drops details. A hook nudges once a session passes 195k tokens, ten points before autocompact, and the <code>handoff</code> skill can also be asked for by hand. It proposes first, pastes a complete summary into a new Claude session in a new herdr tab, and closes the old pane only after the new session replies with its to-do list, so a failed start never loses the only live copy. The new session opens in the old one's folder, and the script accepts Claude Code's folder-trust prompt there, because the old session already works in that folder; sessions run from the home folder hit that prompt on every start. Decided 2026-11-10.</>,
     },
     {
+      title: 'Public repository with history as is',
+      area: 'Install',
+      status: 'Adopted',
+      why: <>The repository was made public without rewriting history. A pattern scan of all commits found no keys, tokens or passwords, and the <code>.env.example</code> files hold only blank values. Two commits keep a personal Gmail as author and one keeps a local Mac address; rewriting them was declined to keep commit IDs stable. Decided 2026-11-13.</>,
+    },
+    {
       title: 'Anti-slop skills and AI-detector humanizers',
       area: 'Tools',
       status: 'Rejected',

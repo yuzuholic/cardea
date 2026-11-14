@@ -56,14 +56,17 @@ function New-Stubs($Dir) {
         'if "%1"=="clone" (',
         '  mkdir "%~6\skills\marimo-notebook"',
         '  echo name: marimo-notebook> "%~6\skills\marimo-notebook\SKILL.md"',
+        '  mkdir "%~6\skills\langfuse"',
+        '  echo name: langfuse> "%~6\skills\langfuse\SKILL.md"',
         ')'
     ) @(
         '#!/bin/sh',
         'echo "git $*" >> "$FAKE_LOG"',
         'if [ "$1" = clone ]; then',
         '  for last; do :; done',
-        '  mkdir -p "$last/skills/marimo-notebook"',
+        '  mkdir -p "$last/skills/marimo-notebook" "$last/skills/langfuse"',
         '  echo "name: marimo-notebook" > "$last/skills/marimo-notebook/SKILL.md"',
+        '  echo "name: langfuse" > "$last/skills/langfuse/SKILL.md"',
         'fi'
     )
 
@@ -166,7 +169,7 @@ try {
     Assert-NotCalled 'apple-skills'
     Assert-Called 'uv tool install graphifyy==0.9.88'
 
-    foreach ($s in 'graphify', 'marimo-notebook') {
+    foreach ($s in 'graphify', 'marimo-notebook', 'langfuse') {
         Assert (Test-Path (Join-Path $Home_ ".claude/skills/$s/SKILL.md")) "the $s skill was not installed"
     }
 

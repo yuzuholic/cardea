@@ -259,6 +259,21 @@ function Install-VendoredSkills {
     }
 
     Remove-Item -Recurse -Force $scratch -ErrorAction SilentlyContinue
+
+    $scratch = New-Scratch
+    $clone = Join-Path $scratch 'repo'
+    & git clone -q --depth 1 https://github.com/langfuse/skills $clone *> $null
+    $built = Join-Parts $clone 'skills' 'langfuse'
+
+    if ($LASTEXITCODE -eq 0 -and (Test-Path (Join-Path $built 'SKILL.md'))) {
+        Install-SkillDir $built 'langfuse'
+        Ok 'langfuse skill'
+    }
+    else {
+        Warn 'could not fetch langfuse/skills'
+    }
+
+    Remove-Item -Recurse -Force $scratch -ErrorAction SilentlyContinue
 }
 
 function Invoke-Checks {

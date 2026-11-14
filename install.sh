@@ -498,14 +498,15 @@ if command -v herdr >/dev/null 2>&1; then
 fi
 
 # --- vendored skills -------------------------------------------------------
-# herdr and graphify ship their own skills; generate them from the installed versions.
+# herdr and graphify ship their own skills, generated from the installed versions; marimo and
+# langfuse publish theirs in git repos.
 step "skills"
 if command -v uv >/dev/null 2>&1; then
   spin "installing graphify 0.9.88" uv tool install graphifyy==0.9.88 >/dev/null \
     || warn "graphify failed to install"
 fi
 if sh "$REPO_DIR/scripts/vendor-skills.sh" "$HOME/.claude/skills" >/dev/null; then
-  ok "herdr and graphify skills"
+  ok "herdr, graphify, marimo-notebook and langfuse skills"
 else
   warn "a vendored skill could not be generated — run scripts/vendor-skills.sh to see why"
 fi

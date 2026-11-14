@@ -63,8 +63,6 @@ actually cruel: the teasing is theatrical.
 ## Where things live
 
 - Repos: `~/Repositories/<repo>`. The Aletheia ones come from https://github.com/aletheia-ios.
-- Dumps, exports and backups: `~/nas/archive/MacMini/` (the SMB share
-  `//macos@truenas.local/archive`).
 - `/Volumes/Main/Repositories/` is stale; ignore any reference to it.
 
 ## Working style
@@ -83,9 +81,10 @@ actually cruel: the teasing is theatrical.
   scripts live in `/tmp`.
 - Non-trivial logic ships with one runnable check.
 - Whitespace: a blank line before and after every block statement (`if`, `for`, `while`,
-  `switch`/`match`, `try`, `with`, `guard`), except where it opens or closes its enclosing
-  block. Inside a function, a blank line also separates steps that do different jobs, and the
-  final `return` or call that finishes the function stands apart.
+  `switch`/`match`, `try`, `with`, `guard`, and `#if … #endif` as one block), except where it
+  opens or closes its enclosing block. Lines inside an `#if` branch stay together. Inside a
+  function, a blank line also separates steps that do different jobs, and the final `return`
+  or call that finishes the function stands apart.
 - Comments: default to none. Write one only when it says something the code can't; the
   comment-audit skill has the rules.
 - Commits: `<type>: <subject>`. No scope, no body, no Co-Authored-By.
