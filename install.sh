@@ -117,7 +117,7 @@ fi
 cd "$REPO_DIR"
 ENV_FILE="$REPO_DIR/.env"
 # the user-scope MCP servers cardea owns; anything else in claude code is left alone.
-MCP_NAMES='serena|container-use|xcodebuild|swiftlens|xcode|basic-memory'
+MCP_NAMES='container-use|xcodebuild|swiftlens|xcode|basic-memory'
 
 # --- probes ----------------------------------------------------------------
 # any http status at all means something answered. an MCP endpoint may well reply
@@ -435,7 +435,6 @@ mcp() {
   claude mcp remove -s user "$1" >/dev/null 2>&1 || true
   if claude mcp add-json -s user "$1" "$2" >/dev/null; then ok "mcp: $1"; else bad "mcp: $1 — could not register"; fi
 }
-mcp serena        '{"type":"stdio","command":"uvx","args":["--from","git+https://github.com/oraios/serena@v2.1.0","serena","start-mcp-server","--context","claude-code","--project-from-cwd"]}'
 mcp container-use '{"type":"stdio","command":"container-use","args":["stdio"]}'
 mcp xcodebuild    '{"type":"stdio","command":"npx","args":["-y","xcodebuildmcp@2.7.0","mcp"],"env":{"XCODEBUILDMCP_SENTRY_DISABLED":"true"}}'
 mcp swiftlens     '{"type":"stdio","command":"uvx","args":["swiftlens@0.2.14"]}'
@@ -499,14 +498,15 @@ if command -v herdr >/dev/null 2>&1; then
 fi
 
 # --- vendored skills -------------------------------------------------------
-# herdr and graphify ship their own skills; generate them from the installed versions.
+# herdr and graphify ship their own skills, generated from the installed versions; marimo and
+# langfuse publish theirs in git repos.
 step "skills"
 if command -v uv >/dev/null 2>&1; then
   spin "installing graphify 0.9.88" uv tool install graphifyy==0.9.88 >/dev/null \
     || warn "graphify failed to install"
 fi
 if sh "$REPO_DIR/scripts/vendor-skills.sh" "$HOME/.claude/skills" >/dev/null; then
-  ok "herdr and graphify skills"
+  ok "herdr, graphify, marimo-notebook and langfuse skills"
 else
   warn "a vendored skill could not be generated — run scripts/vendor-skills.sh to see why"
 fi
@@ -522,7 +522,7 @@ if has_gum; then
    sign in with your claude subscription (interactive)
 2. per iOS project
    $(paint --bold -- 'xcode-build-server config -project X.xcodeproj -scheme X')
-3. on the NAS, in /mnt/main/docker/lab
+3. on the NAS, in /mnt/main/Docker/lab
    $(paint --bold -- 'sudo docker compose up -d')
    $(paint --faint -- 'https://yuzuholic.github.io/cardea/docs/nas')
 
@@ -532,7 +532,7 @@ else
   cat <<EOF
   1. claude auth login                   sign in with your claude subscription (interactive)
   2. per iOS project:                    xcode-build-server config -project X.xcodeproj -scheme X
-  3. on the NAS:                         sudo docker compose up -d in /mnt/main/docker/lab
+  3. on the NAS:                         sudo docker compose up -d in /mnt/main/Docker/lab
                                          (see https://yuzuholic.github.io/cardea/docs/nas)
 
   re-run anytime. ${D}./install.sh --check${R} probes without changing anything.

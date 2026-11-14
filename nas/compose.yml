@@ -1,5 +1,5 @@
 # cardea, self-hosted: the whole lab stack as one service. put this file, a .env (from
-# .env.example) and kb/ in one folder on the NAS (/mnt/main/docker/lab), then
+# .env.example) and kb/ in one folder on the NAS (/mnt/main/Docker/lab), then
 # `sudo docker compose up -d`.
 name: cardea
 
@@ -29,6 +29,11 @@ services:
       # obsidian
       OBSIDIAN_USER: ${OBSIDIAN_USER:?set OBSIDIAN_USER in .env}
       OBSIDIAN_PASSWORD: ${OBSIDIAN_PASSWORD:?set OBSIDIAN_PASSWORD in .env}
+
+      # who basic memory and obsidian run as; both must be able to write the notes.
+      BASIC_MEMORY_USER: ${BASIC_MEMORY_USER:-1000:1000}
+      OBSIDIAN_PUID: ${OBSIDIAN_PUID:-1000}
+      OBSIDIAN_PGID: ${OBSIDIAN_PGID:-1000}
 
       # optional: the cloudflare tunnel only starts when a token is set.
       CLOUDFLARE_TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}

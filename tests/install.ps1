@@ -39,13 +39,13 @@ function New-Stubs($Dir) {
     New-Stub $Dir 'claude' @(
         '@echo off',
         'if "%1 %2 %3"=="plugin list --json" (echo [{"id": "superpowers@superpowers-marketplace"}] & exit /b 0)',
-        'if "%1 %2"=="mcp list" (echo serena: uvx - Connected & exit /b 0)',
+        'if "%1 %2"=="mcp list" (echo basic-memory: http - Connected & exit /b 0)',
         'echo claude %* >> "%FAKE_LOG%"'
     ) @(
         '#!/bin/sh',
         'case "$*" in',
         '  "plugin list --json") echo ''[{"id": "superpowers@superpowers-marketplace"}]''; exit 0 ;;',
-        '  "mcp list") echo "serena: uvx - Connected"; exit 0 ;;',
+        '  "mcp list") echo "basic-memory: http - Connected"; exit 0 ;;',
         'esac',
         'echo "claude $*" >> "$FAKE_LOG"'
     )
@@ -56,14 +56,17 @@ function New-Stubs($Dir) {
         'if "%1"=="clone" (',
         '  mkdir "%~6\skills\marimo-notebook"',
         '  echo name: marimo-notebook> "%~6\skills\marimo-notebook\SKILL.md"',
+        '  mkdir "%~6\skills\langfuse"',
+        '  echo name: langfuse> "%~6\skills\langfuse\SKILL.md"',
         ')'
     ) @(
         '#!/bin/sh',
         'echo "git $*" >> "$FAKE_LOG"',
         'if [ "$1" = clone ]; then',
         '  for last; do :; done',
-        '  mkdir -p "$last/skills/marimo-notebook"',
+        '  mkdir -p "$last/skills/marimo-notebook" "$last/skills/langfuse"',
         '  echo "name: marimo-notebook" > "$last/skills/marimo-notebook/SKILL.md"',
+        '  echo "name: langfuse" > "$last/skills/langfuse/SKILL.md"',
         'fi'
     )
 
@@ -155,7 +158,6 @@ try {
     Assert-Linked '.claude/CLAUDE.md' 'claude/CLAUDE.md'
     Assert-Linked '.claude/skills/tldr' 'claude/skills/tldr'
     Assert-Linked '.claude/skills/baby' 'claude/skills/baby'
-    Assert-Called 'mcp add -s user serena -- uvx --from git+https://github.com/oraios/serena@v2.1.0'
     Assert-Called 'mcp add -s user --transport http basic-memory http://127.0.0.1:8766/mcp'
     Assert-Called "plugin install cardea --marketplace $Repo -y"
     Assert-Called 'plugin update superpowers@superpowers-marketplace'
@@ -167,7 +169,7 @@ try {
     Assert-NotCalled 'apple-skills'
     Assert-Called 'uv tool install graphifyy==0.9.88'
 
-    foreach ($s in 'graphify', 'marimo-notebook') {
+    foreach ($s in 'graphify', 'marimo-notebook', 'langfuse') {
         Assert (Test-Path (Join-Path $Home_ ".claude/skills/$s/SKILL.md")) "the $s skill was not installed"
     }
 

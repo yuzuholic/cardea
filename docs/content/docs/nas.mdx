@@ -8,13 +8,13 @@ launcher: it carries the stack's compose file and a current Docker Compose, and 
 service from its official image, next to itself, on the NAS's own Docker. Stopping `cardea`
 stops the whole stack.
 
-On the NAS it lives at `/mnt/main/docker/lab`; over SMB it shows up as
-`/Volumes/docker/lab`. That folder holds three things: `compose.yml` (from `nas/` in the
+On the NAS it lives at `/mnt/main/Docker/lab`; over SMB it shows up as
+`/Volumes/Docker/lab`. That folder holds three things: `compose.yml` (from `nas/` in the
 repo), which declares every setting the stack reads; `.env`, which holds their values; and
 `kb/` with the notes.
 
 ```sh
-cd /mnt/main/docker/lab
+cd /mnt/main/Docker/lab
 sudo docker compose up -d
 sudo docker compose logs -f cardea
 ```
@@ -60,7 +60,7 @@ launcher, and `lab`, the services it starts. To use a different project name or 
 ## Moving from the old stack
 
 The stack used to run straight from `docker-compose.yml` on the NAS. To switch, in
-`/mnt/main/docker/lab`:
+`/mnt/main/Docker/lab`:
 
 1. `sudo docker compose down` stops the old stack. Volumes are kept, so no data is lost.
 2. Move the old `docker-compose.yml` out of the folder.
@@ -238,6 +238,11 @@ without both values the stack refuses to start:
 OBSIDIAN_USER=admin
 OBSIDIAN_PASSWORD=   # openssl rand -hex 24
 ```
+
+Basic Memory and Obsidian run as uid 1000 by default. When the notes folder grants access by
+group instead, set `BASIC_MEMORY_USER` (`uid:gid`), `OBSIDIAN_PUID` and `OBSIDIAN_PGID` in the
+same `.env` to users in that group. Before Basic Memory first starts as a new user, `chown`
+its `basic_memory_home` volume to that user.
 
 The first visit shows a certificate warning, because the certificate is self-signed. Accept
 it once per browser. Then open `/config/vaults/kb` as the vault; its `.obsidian/` settings

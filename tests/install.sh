@@ -66,9 +66,9 @@ unsaid()  { ! grep -aqF -- "$1" "$out" || fail "$name: output should not contain
 called()  { grep -qF -- "$1" "$log" || fail "$name: expected a call: $1"; }
 uncalled() { ! grep -qF -- "$1" "$log" || fail "$name: unexpected call: $1"; }
 calls()   { [ "$(grep -cF -- "$1" "$log")" -eq "$2" ] || fail "$name: expected $2 calls of '$1', got $(grep -cF -- "$1" "$log")"; }
-# the work a full run does: six mcp servers, the plugins, the vendored skills, the rules link.
+# the work a full run does: five mcp servers, the plugins, the vendored skills, the rules link.
 installed() {
-  calls 'mcp add-json -s user' 6
+  calls 'mcp add-json -s user' 5
   called "claude plugin install langfuse-observability --marketplace langfuse/Claude-Observability-Plugin -y"
   called "claude plugin install cardea --marketplace $dir/repo -y"
   # plannotator is already installed in the fake, so a run refreshes it instead.

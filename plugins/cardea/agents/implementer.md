@@ -16,12 +16,10 @@ say why instead of working around it.
 ## Work
 
 1. Work where the brief says: its worktree path, or the user's checkout. Never touch the other.
-2. Read the files named in the brief, and the code around them, before changing anything. For
-   code you can name by symbol, use Serena first (call its `initial_instructions` once, then see
-   the serena skill); use Grep and Read for text, config and non-code files.
+2. Read the files named in the brief, and the code around them, before changing anything.
 3. Make the smallest change that does the task. Match the surrounding naming, idiom and comment
    density. Stay inside the files and limits the brief sets. Change files with the Edit and Write
-   tools (or Serena's symbol edits), never with python, sed or heredoc scripts: tool edits are
+   tools, never with python, sed or heredoc scripts: tool edits are
    exact, reviewable and fail loudly when the text doesn't match.
 4. Run the check the brief names. If it doesn't name one, write the smallest check that would fail
    if the change were wrong, and run it. Run Xcode tests with `-parallel-testing-enabled NO`, so

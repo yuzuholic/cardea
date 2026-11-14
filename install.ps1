@@ -56,7 +56,7 @@ function Get-Prerequisites {
     @(
         @{ Name = 'Git for Windows with Git Bash'; Ok = (Test-GitBash); Hint = 'winget install Git.Git' }
         @{ Name = 'Python 3 (py)'; Ok = (Test-Python); Hint = 'winget install Python.Python.3.13' }
-        @{ Name = 'uv (serena and graphify)'; Ok = [bool](Get-Command uv -ErrorAction SilentlyContinue); Hint = 'winget install astral-sh.uv' }
+        @{ Name = 'uv (graphify)'; Ok = [bool](Get-Command uv -ErrorAction SilentlyContinue); Hint = 'winget install astral-sh.uv' }
         @{ Name = 'claude CLI'; Ok = [bool](Get-Command claude -ErrorAction SilentlyContinue); Hint = 'install Claude Code, then run claude once' }
     )
 }
@@ -259,6 +259,21 @@ function Install-VendoredSkills {
     }
 
     Remove-Item -Recurse -Force $scratch -ErrorAction SilentlyContinue
+
+    $scratch = New-Scratch
+    $clone = Join-Path $scratch 'repo'
+    & git clone -q --depth 1 https://github.com/langfuse/skills $clone *> $null
+    $built = Join-Parts $clone 'skills' 'langfuse'
+
+    if ($LASTEXITCODE -eq 0 -and (Test-Path (Join-Path $built 'SKILL.md'))) {
+        Install-SkillDir $built 'langfuse'
+        Ok 'langfuse skill'
+    }
+    else {
+        Warn 'could not fetch langfuse/skills'
+    }
+
+    Remove-Item -Recurse -Force $scratch -ErrorAction SilentlyContinue
 }
 
 function Invoke-Checks {
@@ -285,7 +300,7 @@ function Invoke-Checks {
 
     if (Get-Command claude -ErrorAction SilentlyContinue) {
         Step 'claude code mcp servers'
-        $servers = & claude mcp list 2>$null | Where-Object { $_ -match '^(serena|basic-memory):' }
+        $servers = & claude mcp list 2>$null | Where-Object { $_ -match '^basic-memory:' }
 
         if ($servers) { $servers | ForEach-Object { Write-Host "  $_" } } else { Warn 'none registered yet' }
     }
@@ -321,7 +336,6 @@ Step 'links'
 foreach ($l in $Links) { Set-Link $l.Src $l.Dest }
 
 Step 'mcp servers'
-Register-Mcp 'serena' @('serena', '--', 'uvx', '--from', 'git+https://github.com/oraios/serena@v2.1.0', 'serena', 'start-mcp-server', '--context', 'claude-code', '--project-from-cwd')
 $memoryUrl = Get-BasicMemoryUrl
 
 if ($memoryUrl) {
