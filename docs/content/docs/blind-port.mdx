@@ -1,0 +1,76 @@
+---
+title: Blind port
+description: How cardea ports a UI to another framework without the builder seeing the original.
+---
+
+A blind port moves an existing UI from one framework or codebase to another, for example from
+React to SwiftUI. A describer sees the reference UI. A blind implementer builds from the describer's words alone,
+so the result is judged on how it looks and behaves. Once the UI passes, a reviewer audits the
+code. Blind ports run in a session started like this:
+
+```sh
+claude --agent cardea:orchestrator --effort medium
+```
+
+The orchestrator then follows the `blind-port` skill. It opens the panes, starts the three
+agents and lands the work.
+
+| Role | Agent | Model | Does |
+|---|---|---|---|
+| Describer | `cardea:describer` | Opus 5.5, medium | Views the reference, writes the rubric and briefs, grades the UI. |
+| Blind implementer | `cardea:implementer` | Sonnet 5.5, low | Builds from the briefs only. |
+| Reviewer | `cardea:reviewer` | Opus 5.5, medium | Audits the code and applies fixes. |
+
+## Why the implementer is blind
+
+The implementer cannot copy what it cannot see, so the build is judged only on how it looks and
+behaves.
+
+## How blindness is enforced
+
+The implementer starts with `CARDEA_BLIND=1` set. While it is set, cardea's hook denies the
+implementer's calls to the blocked items. `CARDEA_BLIND_PATHS` names the reference paths and
+`CARDEA_BLIND_URLS` names the reference URLs. Blocked:
+
+- The reference paths and URLs.
+- The build folders `dist/`, `build/`, `.next/` and `storybook-static/`.
+- `playwright-cli`, AXe and `simctl` screenshot commands.
+- Browser and screenshot MCP tools.
+
+A deny never prompts you. The describer and reviewer run without the variable.
+
+A hook does this because a brief alone relies on the implementer obeying. Permission deny rules
+stop Read and Edit, but not `cat` or a browser.
+
+## Rubric and scoring
+
+Before round one the describer writes a rubric from the reference UI. The rubric does not change
+between rounds. The score is the percentage of rubric items that pass.
+
+The reference can be a running UI, its code or only a folder of screenshots. With screenshots
+only, the rubric covers what they show, and the describer lists the states it cannot see before
+round one so you can add screenshots or accept the gap.
+
+## Build loop
+
+The implementer builds. The describer runs the UI and grades the rendered UI, never the code.
+The next brief lists only the failing items. Building stops at 95 percent or after 6 rounds.
+
+## Review
+
+The reviewer runs the `comment-audit` skill and the logic checks on the code, then applies the
+fixes. Review stops at 95 percent or after 3 rounds. At either cap the orchestrator brings you
+the failing items, and you extend, rescope or accept.
+
+## Where it runs
+
+Blind ports run only in a session started as `cardea:orchestrator`. They also need herdr, because
+only a herdr pane can carry the environment variables to the implementer.
+
+## Layout in herdr
+
+The orchestrator keeps the left pane. On the right there is one row per feature, split into the
+describer and the implementer. At review the row becomes a single reviewer pane.
+
+The cap of five agents counts sessions. A building row counts two and a reviewing row counts one.
+Two features can build at once, with room for one in review.

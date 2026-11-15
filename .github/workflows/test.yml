@@ -36,6 +36,8 @@ jobs:
       - run: brew install herdr
       # keep in step with the graphify pin in install.sh
       - run: uv tool install graphifyy==0.9.88
+      # keep in step with the playwright-cli pin in install.sh; the macOS runner already has node
+      - run: npm install -g @playwright/cli@0.1.24
       - run: sh tests/vendor-skills.sh
 
   install:

@@ -28,8 +28,9 @@ Leave nothing out: the new session knows only what this says. Formal and plain, 
 Write it to a file in the scratchpad (or `/tmp`), in this order:
 
 1. **Opening line, verbatim:** `You are taking over from a previous session that is closing.
-   Read everything below, then reply with RECEIVED followed by the to-do list, one line per
-   item, and wait for the user's next message.`
+   Read everything below. Create one task in your task list for each To do item, then reply
+   with RECEIVED followed by the to-do list, one line per item, and wait for the user's next
+   message.`
 2. **Session:** its name, the repo, the branch, the agent type and effort, and the old
    transcript path (`~/.claude/projects/<project>/<session id>.jsonl`) for looking up details.
 3. **The user's instructions this session:** every standing instruction, preference and
@@ -37,7 +38,9 @@ Write it to a file in the scratchpad (or `/tmp`), in this order:
 4. **Done:** each piece of work, with how it was checked and whether it is committed or pushed.
 5. **In progress:** the exact state, including commands mid-run and background jobs.
 6. **To do:** everything outstanding, including what waits for the user's word. Mark what must
-   not start without approval.
+   not start without approval. Write each item as one short line that reads well as a task:
+   the new session copies them into its task list (`CLAUDE_CODE_ENABLE_TODO_TOOLS=1`, which
+   `install.sh` sets), starting it fresh rather than sharing this session's list.
 7. **Decisions:** what was decided, and where each is recorded.
 8. **Files:** every file changed, created or left uncommitted, and scratch files still needed.
 9. **Problems:** errors hit, how each was fixed, and anything unresolved.

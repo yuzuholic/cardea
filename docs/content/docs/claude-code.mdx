@@ -19,7 +19,8 @@ leaves everything else to you.
 | <Tool icon="langfuse.svg">Langfuse tracing</Tool> | Plugin | Plugin marketplace, configured from `.env` |
 | <Tool icon="claude.svg" mono>Cardea plugin</Tool> | Plugin, a copy in `~/.claude/plugins/cache/` | `claude plugin install` from the repo |
 | Five more plugins | Plugins | Their own marketplaces |
-| <Tool icon="herdr.svg">herdr</Tool>, graphify, marimo and langfuse skills | `~/.claude/skills/herdr/`, `~/.claude/skills/graphify/`, `~/.claude/skills/marimo-notebook/`, `~/.claude/skills/langfuse/` | `scripts/vendor-skills.sh` |
+| <Tool icon="herdr.svg">herdr</Tool>, graphify, playwright-cli, marimo and langfuse skills | `~/.claude/skills/herdr/`, `~/.claude/skills/graphify/`, `~/.claude/skills/playwright-cli/`, `~/.claude/skills/marimo-notebook/`, `~/.claude/skills/langfuse/` | `scripts/vendor-skills.sh` |
+| Playwright CLI | The `playwright-cli` binary, with Chromium | `npm install -g @playwright/cli@0.1.24`, then `playwright-cli install-browser chromium` |
 
 ## What Cardea leaves alone
 
@@ -69,6 +70,7 @@ for them, so unlike the rules in `CLAUDE.md` they cost nothing until they are us
 | Diagrams | `mermaid` |
 | iOS | `driving-ios-simulator-with-axe`, `rendering-swiftui-previews`, `sim-clone-restore`, `grdb` |
 | Reviews and releases | `panel`, `comment-audit`, `pre-commit-audit`, `semantic-commit`, `local-merge`, `post-merge-sweep`, `release-changelog`, `app-copy` |
+| Porting a UI to another framework | `blind-port` |
 | Recommendations | `recsys` |
 
 `retrieval-order` sets where an agent looks before it asks: the session, then the rules and
@@ -109,6 +111,8 @@ another agent. Both edit files with the Edit and Write tools, never with scripts
 | `cardea:orchestrator` | you | Opus 5.5 | medium |
 | `cardea:implementer` | you | Opus 5.5 | medium |
 | `cardea:implementer` | the orchestrator | Sonnet 5.5 | low |
+| `cardea:describer` | the orchestrator, through `blind-port` | Opus 5.5 | medium |
+| `cardea:reviewer` | the orchestrator, through `blind-port` | Opus 5.5 | medium |
 
 Start either one with its effort spelled out:
 
@@ -165,9 +169,17 @@ orchestrator asks you; it never answers for you.
 **Outside herdr**, it starts implementers as ordinary background subagents instead, on Sonnet
 at low effort.
 
+**Blind port** is for a UI feature that must match an existing web or Swift UI. The
+orchestrator runs the `blind-port` skill, which needs herdr. A describer looks at the reference
+UI (with `playwright-cli` for the web, or the AXe skill for a Swift app), writes a rubric and
+briefs an implementer in words and numbers only. The implementer is started with `CARDEA_BLIND`
+set, so it never sees the reference, and the describer grades its rendered UI against the rubric
+each round until 95 percent pass or six rounds are used. A reviewer then audits the code with
+the `comment-audit` skill and a logic rubric, fixes what fails and stages the result.
+
 ## Hooks
 
-The plugin also ships five hooks. Two can block a tool call, and the commit hook can also ask
+The plugin also ships six hooks. Three can block a tool call, and the commit hook can also ask
 you first; the other three only add a note. If a hook fails for any reason, the call goes
 ahead. None of them ever approves a call, so your usual permission prompts still apply.
 
@@ -175,6 +187,7 @@ ahead. None of them ever approves a call, so your usual permission prompts still
 |---|---|---|
 | Session note | A session starts, resumes or is compacted | Reminds Claude of the lookup order, names the repo's Basic Memory project (the repo's folder name), says whether a graphify map exists, and lists up to five notes from the last week. If the NAS doesn't answer within 1.5 seconds, the notes are left out. |
 | Secrets | Before reading, searching, editing or running a command | Blocks private keys (`id_rsa`, `*.pem`, `*.key`, `*.p12`, `*.p8`). `*.pub` keys are fine, and so are `.env` files: what's in them can be rotated, and production secrets live in GitHub and CI. |
+| Blind mode | Before reading, searching, editing, fetching or running a command, only when `CARDEA_BLIND=1` | Denies reads of the paths in `CARDEA_BLIND_PATHS` and the URLs in `CARDEA_BLIND_URLS`, of `dist/`, `build/`, `.next/` and `storybook-static/`, `playwright-cli`, AXe and `simctl` screenshot commands, and browser or screenshot MCP tools. A deny never prompts you. Only the blind implementer is started with the variables. |
 | Commit message | Before a `git` command | Blocks a commit whose message isn't `<type>: <subject>`: lowercase, no full stop, under 72 characters, no body and no trailers such as `Co-Authored-By`. It lists what's wrong. If the message can't be read, for example because an editor opens, the commit goes ahead. Outside the cardea repo, it also checks the message and the lines being committed for any mention of an AI tool or company, and asks you to approve that one commit when it finds one, listing each file, line and word. Every commit is asked fresh. |
 | Web nudge | The first web search or fetch in a session | Reminds Claude to check notes, code and history first. It never blocks. |
 | Handoff nudge | The first message after the context passes 195k tokens | Asks Claude to propose a handoff to a fresh session with the `handoff` skill, ten points before autocompact at 75% of the 300k window. It reads the size from the session's transcript and never blocks. |
@@ -196,8 +209,8 @@ that were turned off and updates each one.
 | [cloudflare](https://github.com/cloudflare/skills) | Guidance for building on Cloudflare |
 | [humanizer](https://github.com/blader/humanizer) | Rewrites text that reads as machine-written |
 
-herdr and graphify each ship a skill of their own. `scripts/vendor-skills.sh` generates both
-from the installed versions on every run, so they always match. graphify's installer would
+herdr, graphify and playwright-cli each ship a skill of their own. `scripts/vendor-skills.sh`
+generates all three from the installed versions on every run, so they always match. graphify's installer would
 also edit `CLAUDE.md`; the script runs it against a scratch folder so the real one is never
 touched. marimo and Langfuse publish their skills in git repos, so the script copies the
 `marimo-notebook` skill from the latest `marimo-team/skills` and the `langfuse` skill from the

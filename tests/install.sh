@@ -78,13 +78,16 @@ installed() {
     called "claude plugin install ${m%%:*} --marketplace ${m#*:} -y"
   done
   called 'uv tool install graphifyy==0.9.88'
-  for s in herdr graphify; do
+  called 'npm install -g @playwright/cli@0.1.24'
+  called 'playwright-cli install-browser chromium'
+  for s in herdr graphify playwright-cli; do
     grep -qx "name: $s" "$dir/home/.claude/skills/$s/SKILL.md" 2>/dev/null || fail "$name: the $s skill wasn't installed"
   done
   called "plugin configure langfuse-observability@langfuse-observability --values-stdin <<< {\"LANGFUSE_BASE_URL\":\"$1\""
   [ "$(readlink "$dir/home/.claude/CLAUDE.md")" = "$dir/repo/claude/CLAUDE.md" ] || fail "$name: ~/.claude/CLAUDE.md is not linked to the repo"
   [ "$(readlink "$dir/home/.claude/skills/tldr")" = "$dir/repo/claude/skills/tldr" ] || fail "$name: ~/.claude/skills/tldr is not linked to the repo"
   [ "$(readlink "$dir/home/.claude/skills/baby")" = "$dir/repo/claude/skills/baby" ] || fail "$name: ~/.claude/skills/baby is not linked to the repo"
+  grep -q '"CLAUDE_CODE_ENABLE_TODO_TOOLS": "1"' "$dir/home/.claude/settings.json" 2>/dev/null || fail "$name: the task list was not turned on in ~/.claude/settings.json"
   said 'claude auth login'
 }
 # gum drew the prompts in gum mode, and never in plain mode.
@@ -155,6 +158,14 @@ for mode in $MODES; do
   said '.env created from the example'
   has_env BASIC_MEMORY_URL http://truenas.local:8766/mcp
   installed http://truenas.local:3000
+
+  # an existing settings.json keeps its other keys and env entries.
+  setup settings "$mode"
+  mkdir -p "$dir/home/.claude"
+  printf '{"model":"x","env":{"A":"1"}}' > "$dir/home/.claude/settings.json"
+  term 'sh install.sh --no-prompt' || fail "$name: exited non-zero"
+  installed http://truenas.local:3000
+  python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(not (d["model"]=="x" and d["env"]["A"]=="1"))' "$dir/home/.claude/settings.json" || fail "$name: settings.json lost its other keys"
 
   # curl | sh: the script arrives on stdin and brew reads stdin.
   setup pipe "$mode"

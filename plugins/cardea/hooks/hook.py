@@ -1,4 +1,4 @@
-"""cardea's claude code hooks: python3 hook.py session|secrets|commit|web|handoff, hook json on stdin,
+"""cardea's claude code hooks: python3 hook.py session|secrets|blind|commit|web|handoff, hook json on stdin,
 or python3 hook.py scan [dir] to list AI mentions in a working tree.
 every hook fails open: any error exits 0 with no output, so a broken hook never blocks."""
 import json
@@ -13,6 +13,8 @@ import urllib.request
 READERS = {"cat", "less", "more", "head", "tail", "grep", "egrep", "fgrep", "rg", "sed", "awk",
            "gawk", "bat", "source", ".", "nl", "tac", "strings", "xxd", "od", "hexdump", "base64"}
 STDOUT = {"/dev/stdout", "/dev/fd/1", "/dev/tty", "-"}
+BUILD_DIRS = {"dist", "build", ".next", "storybook-static"}
+CAPTURE = re.compile(r"\bplaywright-cli\b|\baxe\s+screenshot\b|\bxcrun\s+simctl\s+io\b.*\b(screenshot|recordVideo)\b")
 TYPES = ("feat", "fix", "docs", "style", "refactor", "test", "chore", "perf", "ci", "build")
 AI_PATTERNS = ("claude", "anthropic", "chatgpt", "openai", "copilot", "cursor", "gemini", "codex",
                "🤖", "claude.ai/code/session_", "noreply@anthropic.com")
@@ -154,6 +156,82 @@ def secrets(data):
     if hit:
         deny(f"cardea: {hit} is a private key, so no tool may read or print it. "
              "Don't try another tool or command to get at it.")
+
+
+# blind mode
+
+def under(path, roots, cwd):
+    p = os.path.normpath(os.path.join(cwd, os.path.expanduser(path)))
+
+    return any(p == r or p.startswith(r + os.sep) for r in roots)
+
+
+def build_dir(path):
+    return any(part in BUILD_DIRS for part in re.split(r"[\\/]+", path))
+
+
+def bash_blind(command, roots, urls, cwd):
+    # shortcut: word-level scan like bash_secret; indirection (a variable, a script) gets through.
+    for url in urls:
+        if url in command:
+            return url
+
+    for word in re.split(r"""[\s='"<>;&|()`]+""", command):
+        if word and under(word, roots, cwd):
+            return word
+
+    if CAPTURE.search(command):
+        return "a screenshot or recording command"
+
+    for segment in re.split(r"[;&|\n`()]|\$\(", command):
+        words = [w.strip("'\"") for w in segment.split()]
+
+        while words and (re.fullmatch(r"\w+=.*", words[0]) or words[0] in {"sudo", "command", "env", "nohup", "time", "exec"}):
+            words.pop(0)
+
+        if words and os.path.basename(words[0]) in READERS | {"ls", "find"}:
+            hit = next((w for w in words[1:] if build_dir(w)), None)
+
+            if hit:
+                return hit
+
+    return None
+
+
+def blind_hit(tool, args, cwd):
+    roots = [os.path.normpath(os.path.expanduser(p)) for p in os.environ.get("CARDEA_BLIND_PATHS", "").split(os.pathsep) if p]
+    urls = [u for u in os.environ.get("CARDEA_BLIND_URLS", "").split(",") if u]
+
+    if tool == "Bash":
+        return bash_blind(args.get("command", ""), roots, urls, cwd)
+
+    if tool.startswith("mcp__"):
+        low = tool.lower()
+
+        if low.startswith(("mcp__playwright", "mcp__claude-in-chrome")) or "screenshot" in low or "record_sim_video" in low:
+            return tool
+
+        return None
+
+    if tool == "WebFetch":
+        return next((u for u in urls if str(args.get("url", "")).startswith(u)), None)
+
+    for p in (args.get("file_path"), args.get("path"), args.get("glob"), args.get("pattern") if tool == "Glob" else None):
+        if p and (under(p, roots, cwd) or build_dir(p)):
+            return p
+
+    return None
+
+
+def blind(data):
+    if os.environ.get("CARDEA_BLIND") != "1":
+        return
+
+    hit = blind_hit(data.get("tool_name") or "", data.get("tool_input") or {}, data.get("cwd") or os.getcwd())
+
+    if hit:
+        deny(f"cardea: blind mode: {hit} would show the reference frontend, which only the describer may "
+             "see, so don't look for another route to it.")
 
 
 # commit message
@@ -438,6 +516,6 @@ if __name__ == "__main__":
             scan(os.path.abspath(sys.argv[2] if len(sys.argv) > 2 else os.getcwd()))
             sys.exit(0)
         sys.stdin.reconfigure(encoding="utf-8")
-        {"session": session, "secrets": secrets, "commit": commit, "web": web, "handoff": handoff}[sys.argv[1]](json.load(sys.stdin))
+        {"session": session, "secrets": secrets, "blind": blind, "commit": commit, "web": web, "handoff": handoff}[sys.argv[1]](json.load(sys.stdin))
     except Exception:
         pass

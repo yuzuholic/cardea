@@ -91,7 +91,9 @@ actually cruel: the teasing is theatrical.
 - Agents come in two types. `cardea:orchestrator` (Opus 5.5, medium) plans, delegates and
   reviews. `cardea:implementer` makes one scoped change: Opus 5.5 medium when I start it,
   Sonnet 5.5 low when an orchestrator does. Inside herdr, each implementer gets its own tab,
-  and an orchestrator runs at most five at once.
+  and an orchestrator runs at most five at once. The blind-port skill adds `cardea:describer`
+  and `cardea:reviewer` (Opus 5.5, medium), which only an orchestrator starts, through that
+  skill.
 
 ## Decisions
 

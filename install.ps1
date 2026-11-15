@@ -245,6 +245,51 @@ function Install-VendoredSkills {
         Remove-Item -Recurse -Force $scratch
     }
 
+    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+        Warn 'npm not found, skipping playwright-cli'
+    }
+    else {
+        & npm install -g '@playwright/cli@0.1.24' *> $null
+
+        if ($LASTEXITCODE -ne 0) { Warn 'playwright-cli failed to install' }
+
+        if (-not (Get-Command playwright-cli -ErrorAction SilentlyContinue)) {
+            Warn 'playwright-cli not found on PATH, skipping its skill'
+        }
+        else {
+            & playwright-cli install-browser chromium *> $null
+
+            if ($LASTEXITCODE -ne 0) { Warn 'chromium failed to install' }
+
+            $scratch = New-Scratch
+            $savedHome = $env:HOME
+            $savedProfile = $env:USERPROFILE
+            $env:HOME = $scratch
+            $env:USERPROFILE = $scratch
+
+            try {
+                & playwright-cli install --skills claude --global *> $null
+                $code = $LASTEXITCODE
+            }
+            finally {
+                $env:HOME = $savedHome
+                $env:USERPROFILE = $savedProfile
+            }
+
+            $built = Join-Parts $scratch '.claude' 'skills' 'playwright-cli'
+
+            if ($code -eq 0 -and (Test-Path (Join-Path $built 'SKILL.md'))) {
+                Install-SkillDir $built 'playwright-cli'
+                Ok 'playwright-cli skill'
+            }
+            else {
+                Warn 'playwright-cli install did not produce a skill'
+            }
+
+            Remove-Item -Recurse -Force $scratch -ErrorAction SilentlyContinue
+        }
+    }
+
     $scratch = New-Scratch
     $clone = Join-Path $scratch 'repo'
     & git clone -q --depth 1 https://github.com/marimo-team/skills $clone *> $null
@@ -334,6 +379,28 @@ if (-not (Test-SymlinkAllowed)) {
 Step 'links'
 
 foreach ($l in $Links) { Set-Link $l.Src $l.Dest }
+
+Step 'claude code settings'
+
+# the task tools are off by default on newer models; an unreadable settings file is left alone.
+$settingsPath = Join-Parts $UserHome '.claude' 'settings.json'
+
+try {
+    $settings = if (Test-Path $settingsPath) { Get-Content -Raw $settingsPath | ConvertFrom-Json } else { [pscustomobject]@{} }
+
+    if (-not $settings.env) { $settings | Add-Member -NotePropertyName env -NotePropertyValue ([pscustomobject]@{}) -Force }
+
+    if ($settings.env.CLAUDE_CODE_ENABLE_TODO_TOOLS -ne '1') {
+        $settings.env | Add-Member -NotePropertyName CLAUDE_CODE_ENABLE_TODO_TOOLS -NotePropertyValue '1' -Force
+        New-Item -ItemType Directory -Force -Path (Split-Path $settingsPath) | Out-Null
+        $settings | ConvertTo-Json -Depth 20 | Set-Content -Path $settingsPath
+    }
+
+    Ok 'task list on (CLAUDE_CODE_ENABLE_TODO_TOOLS)'
+}
+catch {
+    Warn 'could not set CLAUDE_CODE_ENABLE_TODO_TOOLS in ~/.claude/settings.json: add it to "env" by hand'
+}
 
 Step 'mcp servers'
 $memoryUrl = Get-BasicMemoryUrl

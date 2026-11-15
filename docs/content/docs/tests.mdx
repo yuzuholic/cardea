@@ -17,8 +17,8 @@ stand-in tools where the real ones would install things.
 |---|---|---|
 | `install` | The whole of `install.sh` | expect, python3, curl, git; gum for the gum half |
 | `plugin` | The Cardea plugin and its marketplace | Claude Code |
-| `hooks` | The plugin's five hooks | python3, git, curl |
-| `vendor-skills` | The herdr, graphify, marimo-notebook and langfuse skills | herdr, graphify, network |
+| `hooks` | The plugin's six hooks | python3, git, curl |
+| `vendor-skills` | The herdr, graphify, playwright-cli, marimo-notebook and langfuse skills | herdr, graphify, playwright-cli, network |
 | `nas` | The NAS launcher and the stack it runs | Docker |
 
 ## install
@@ -56,12 +56,15 @@ Feeds the plugin's hooks the same input Claude Code would send. It checks that s
 badly formed commit messages are blocked, that commits mentioning an AI tool or company are
 asked about rather than blocked, that everything else passes quietly, that the web reminder
 shows once per session, that the handoff reminder shows once and only past its token
-threshold, and that the session note still works when Basic Memory is unreachable.
+threshold, and that the session note still works when Basic Memory is unreachable. With
+`CARDEA_BLIND=1` set, it checks that reads of the blocked paths, URLs and build folders, capture
+commands and browser or screenshot MCP tools are denied, and that everything else, and every
+call without the variable, passes quietly.
 A small fake NAS stands in for Basic Memory.
 
 ## vendor-skills
 
-Runs `scripts/vendor-skills.sh` into a scratch folder and checks that all three skills come out
+Runs `scripts/vendor-skills.sh` into a scratch folder and checks that all five skills come out
 named correctly, that a second run replaces them cleanly, and that graphify's installer never
 edits the real `CLAUDE.md`.
 
@@ -85,7 +88,7 @@ Builds the launcher image, then checks:
 | `install` | Ubuntu | `tests/install.sh`, with expect from apt and gum 2.0.2 from its release. Ubuntu's `sh` is dash, which keeps `install.sh` to plain POSIX shell. |
 | `plugin` | Ubuntu | `tests/plugin.sh`, with Claude Code 2.1.296 from npm |
 | `hooks` | Ubuntu | `tests/hooks.sh` |
-| `vendor-skills` | macOS | `tests/vendor-skills.sh`, with herdr from Homebrew and graphify 0.9.88 from uv |
+| `vendor-skills` | macOS | `tests/vendor-skills.sh`, with herdr from Homebrew, graphify 0.9.88 from uv and playwright-cli 0.1.24 from npm |
 | `nas` | Ubuntu | `tests/nas.sh` |
 | `docs` | Ubuntu | Builds this site under `/cardea`, the way GitHub Pages serves it |
 

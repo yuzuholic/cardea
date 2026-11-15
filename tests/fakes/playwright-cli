@@ -1,0 +1,7 @@
+#!/bin/sh
+echo "playwright-cli $*" >> "$FAKE_LOG"
+# `playwright-cli install --skills claude --global` writes its skill under HOME, like the real one.
+if [ "${1:-}" = install ]; then
+  mkdir -p "$HOME/.claude/skills/playwright-cli"
+  printf -- '---\nname: playwright-cli\ndescription: fake\n---\n' > "$HOME/.claude/skills/playwright-cli/SKILL.md"
+fi

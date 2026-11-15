@@ -91,7 +91,7 @@ claude plugin marketplace add yuzuholic/cardea
 claude plugin install cardea@cardea
 ```
 
-**21 skills**
+**22 skills**
 
 | For | Skills |
 |---|---|
@@ -101,16 +101,21 @@ claude plugin install cardea@cardea
 | Diagrams | `mermaid` |
 | iOS | `driving-ios-simulator-with-axe`, `rendering-swiftui-previews`, `sim-clone-restore`, `grdb` |
 | Reviews and releases | `panel`, `comment-audit`, `pre-commit-audit`, `semantic-commit`, `local-merge`, `post-merge-sweep`, `release-changelog`, `app-copy` |
+| Porting a UI to another framework | `blind-port` |
 | Recommendations | `recsys` |
 
-**5 agents**: the design panel's UX designer, average chud and power user, which the `panel`
+**7 agents**: the design panel's UX designer, average chud and power user, which the `panel`
 skill runs at once and merges into one verdict; and an orchestrator and an implementer for
 splitting bigger jobs. The orchestrator plans on Opus and hands each piece to an implementer
 on Sonnet, in its own [herdr](https://github.com/ogulcancelik/herdr) pane when there is one.
+For a UI that must match a reference, its `blind-port` skill also starts a describer, who
+sees the reference and briefs the implementer in words, and a reviewer, who audits the code.
 
-**4 hooks**: a note at the start of each session on where to look things up, a block on
-reading secrets such as `.env` and private keys, a check that commit messages are
-`<type>: <subject>`, and a one-time reminder to check notes and code before the web.
+**6 hooks**: a note at the start of each session on where to look things up, a block on
+reading private keys, a blind mode that hides a reference frontend
+from the blind implementer, a check that commit messages are `<type>: <subject>`, a one-time
+reminder to check notes and code before the web, and a one-time nudge to hand off before
+autocompact.
 
 Skills load when a task calls for them, not in every session. `install.sh` installs the
 plugin from your checkout. Claude Code keeps its own copy, so after editing a skill or hook

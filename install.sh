@@ -197,7 +197,7 @@ probe_tool() {
 
 run_checks() {
   step "tools"
-  for t in brew git docker claude herdr uv uvx container-use xcode-build-server plannotator; do
+  for t in brew git docker claude herdr uv uvx playwright-cli container-use xcode-build-server plannotator; do
     probe_tool "$t"
   done
   # an exported key makes claude code bill the api instead of using the subscription login.
@@ -429,6 +429,23 @@ step "claude code"
 command -v claude >/dev/null 2>&1 || die "claude code is not installed — the Brewfile step should have done it"
 ok "claude $(claude --version 2>/dev/null | cut -d' ' -f1)"
 
+# the task tools (TaskCreate, TaskList, TaskUpdate) are off by default on newer models. claude
+# has no command to set a settings env entry, so merge it in; an unreadable file is left alone.
+if python3 -c '
+import json, os, sys
+p = sys.argv[1]
+d = json.load(open(p)) if os.path.exists(p) else {}
+env = d.setdefault("env", {})
+if env.get("CLAUDE_CODE_ENABLE_TODO_TOOLS") != "1":
+    env["CLAUDE_CODE_ENABLE_TODO_TOOLS"] = "1"
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    json.dump(d, open(p, "w"), indent=2)
+' "$HOME/.claude/settings.json" 2>/dev/null; then
+  ok "task list on (CLAUDE_CODE_ENABLE_TODO_TOOLS)"
+else
+  warn "could not set CLAUDE_CODE_ENABLE_TODO_TOOLS in ~/.claude/settings.json — add it to \"env\" by hand"
+fi
+
 # user scope, so every project gets them. values are baked in from .env at install time;
 # rerun this script after changing .env. remove-then-add keeps it idempotent.
 mcp() {
@@ -498,15 +515,24 @@ if command -v herdr >/dev/null 2>&1; then
 fi
 
 # --- vendored skills -------------------------------------------------------
-# herdr and graphify ship their own skills, generated from the installed versions; marimo and
-# langfuse publish theirs in git repos.
+# herdr, graphify and playwright-cli ship their own skills, generated from the installed versions;
+# marimo and langfuse publish theirs in git repos.
 step "skills"
 if command -v uv >/dev/null 2>&1; then
   spin "installing graphify 0.9.88" uv tool install graphifyy==0.9.88 >/dev/null \
     || warn "graphify failed to install"
 fi
+if command -v npm >/dev/null 2>&1; then
+  spin "installing playwright-cli 0.1.24" npm install -g @playwright/cli@0.1.24 >/dev/null \
+    || warn "playwright-cli failed to install"
+  command -v playwright-cli >/dev/null 2>&1 \
+    && { spin "installing chromium for playwright-cli" playwright-cli install-browser chromium >/dev/null \
+         || warn "chromium failed to install"; }
+else
+  warn "npm not found, skipping playwright-cli"
+fi
 if sh "$REPO_DIR/scripts/vendor-skills.sh" "$HOME/.claude/skills" >/dev/null; then
-  ok "herdr, graphify, marimo-notebook and langfuse skills"
+  ok "herdr, graphify, playwright-cli, marimo-notebook and langfuse skills"
 else
   warn "a vendored skill could not be generated — run scripts/vendor-skills.sh to see why"
 fi

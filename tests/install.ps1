@@ -1,4 +1,4 @@
-# install.ps1 end to end, against stand-ins: claude, git, py, uv and graphify on PATH log
+# install.ps1 end to end, against stand-ins: claude, git, py, uv, npm, playwright-cli and graphify on PATH log
 # their arguments instead of installing anything. runs in a temp folder with a fake home.
 #
 #   powershell -File tests\install.ps1        (or pwsh)
@@ -72,6 +72,24 @@ function New-Stubs($Dir) {
 
     New-Stub $Dir 'py' @('@echo off', 'echo py %* >> "%FAKE_LOG%"') @('#!/bin/sh', 'echo "py $*" >> "$FAKE_LOG"')
     New-Stub $Dir 'uv' @('@echo off', 'echo uv %* >> "%FAKE_LOG%"') @('#!/bin/sh', 'echo "uv $*" >> "$FAKE_LOG"')
+
+    New-Stub $Dir 'npm' @('@echo off', 'echo npm %* >> "%FAKE_LOG%"') @('#!/bin/sh', 'echo "npm $*" >> "$FAKE_LOG"')
+
+    New-Stub $Dir 'playwright-cli' @(
+        '@echo off',
+        'echo playwright-cli %* >> "%FAKE_LOG%"',
+        'if "%1"=="install" (',
+        '  mkdir "%HOME%\.claude\skills\playwright-cli"',
+        '  echo name: playwright-cli> "%HOME%\.claude\skills\playwright-cli\SKILL.md"',
+        ')'
+    ) @(
+        '#!/bin/sh',
+        'echo "playwright-cli $*" >> "$FAKE_LOG"',
+        'if [ "$1" = install ]; then',
+        '  mkdir -p "$HOME/.claude/skills/playwright-cli"',
+        '  echo "name: playwright-cli" > "$HOME/.claude/skills/playwright-cli/SKILL.md"',
+        'fi'
+    )
 
     New-Stub $Dir 'graphify' @(
         '@echo off',
@@ -158,6 +176,8 @@ try {
     Assert-Linked '.claude/CLAUDE.md' 'claude/CLAUDE.md'
     Assert-Linked '.claude/skills/tldr' 'claude/skills/tldr'
     Assert-Linked '.claude/skills/baby' 'claude/skills/baby'
+    $settings = Get-Content -Raw (Join-Path $Home_ '.claude/settings.json') | ConvertFrom-Json
+    Assert ($settings.env.CLAUDE_CODE_ENABLE_TODO_TOOLS -eq '1') 'the task list was not turned on in settings.json'
     Assert-Called 'mcp add -s user --transport http basic-memory http://127.0.0.1:8766/mcp'
     Assert-Called "plugin install cardea --marketplace $Repo -y"
     Assert-Called 'plugin update superpowers@superpowers-marketplace'
@@ -168,8 +188,10 @@ try {
 
     Assert-NotCalled 'apple-skills'
     Assert-Called 'uv tool install graphifyy==0.9.88'
+    Assert-Called 'npm install -g @playwright/cli@0.1.24'
+    Assert-Called 'playwright-cli install-browser chromium'
 
-    foreach ($s in 'graphify', 'marimo-notebook', 'langfuse') {
+    foreach ($s in 'graphify', 'playwright-cli', 'marimo-notebook', 'langfuse') {
         Assert (Test-Path (Join-Path $Home_ ".claude/skills/$s/SKILL.md")) "the $s skill was not installed"
     }
 
@@ -182,7 +204,10 @@ try {
     Initialize-Case 'backup'
     New-Item -ItemType Directory -Path (Join-Path $Home_ '.claude') | Out-Null
     Set-Content -Path (Join-Path $Home_ '.claude/CLAUDE.md') -Value 'mine'
+    Set-Content -Path (Join-Path $Home_ '.claude/settings.json') -Value '{"model":"x","env":{"A":"1"}}'
     Assert ((Invoke-Install @()) -eq 0) 'backup case exited non-zero'
+    $settings = Get-Content -Raw (Join-Path $Home_ '.claude/settings.json') | ConvertFrom-Json
+    Assert ($settings.model -eq 'x' -and $settings.env.A -eq '1' -and $settings.env.CLAUDE_CODE_ENABLE_TODO_TOOLS -eq '1') 'settings.json lost its keys or missed the task list'
     Assert-Linked '.claude/CLAUDE.md' 'claude/CLAUDE.md'
     Assert (@(Get-ChildItem (Join-Path $Repo 'backup') -Recurse -Filter CLAUDE.md).Count -eq 1) 'the existing CLAUDE.md was not backed up'
 

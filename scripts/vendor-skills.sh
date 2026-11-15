@@ -1,7 +1,7 @@
 #!/bin/sh
-# install the skills that herdr, graphify, marimo and langfuse ship themselves. herdr's and
-# graphify's are generated from the installed binaries so they match the version on this
-# machine; marimo's notebook skill and langfuse's skill are copied from their skills repos.
+# install the skills that herdr, graphify, playwright-cli, marimo and langfuse ship themselves.
+# herdr's, graphify's and playwright-cli's are generated from the installed binaries so they match
+# the version on this machine; marimo's notebook skill and langfuse's skill are copied from their skills repos.
 # rerun after updating any of them.
 #
 #   scripts/vendor-skills.sh [skills dir]      default: ~/.claude/skills
@@ -43,6 +43,21 @@ if command -v graphify >/dev/null 2>&1; then
   rm -rf "$scratch"
 else
   echo "graphify: not installed, skipped"
+fi
+
+# playwright-cli writes its skill under the home directory, so give it a scratch home.
+if command -v playwright-cli >/dev/null 2>&1; then
+  scratch=$(mktemp -d)
+  if HOME="$scratch" playwright-cli install --skills claude --global >/dev/null 2>&1 && [ -s "$scratch/.claude/skills/playwright-cli/SKILL.md" ]; then
+    rm -rf "$DEST/playwright-cli"
+    mv "$scratch/.claude/skills/playwright-cli" "$DEST/playwright-cli"
+    echo "playwright-cli skill → $DEST/playwright-cli"
+  else
+    echo "playwright-cli: install did not produce a skill" >&2; FAILED=1
+  fi
+  rm -rf "$scratch"
+else
+  echo "playwright-cli: not installed, skipped"
 fi
 
 # marimo publishes its skills in a git repo rather than a binary, so take the latest

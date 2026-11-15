@@ -47,6 +47,36 @@ for c in 'cat .env' 'source .env' 'grep KEY .env.local' 'ls -la' 'cat ~/.ssh/id_
   allowed secrets "$(tool s Bash command "$c")"
 done
 
+# blind: with CARDEA_BLIND=1 every route to the reference frontend is denied; unset, the hook is silent.
+bdenied()  { out=$(printf '%s' "$1" | env HOME="$work/home" CLAUDE_PLUGIN_DATA="$work/data" CARDEA_BLIND=1 CARDEA_BLIND_PATHS=/ref/app:/ref/app/dist CARDEA_BLIND_URLS=http://localhost:5173,http://localhost:6006 python3 -I "$HOOK" blind) || fail "blind exited non-zero"
+             case $out in *'"permissionDecision": "deny"'*) ;; *) fail "blind should deny: $1" ;; esac; says 'cardea: blind mode:'
+             allowed blind "$1"; }
+ballowed() { out=$(printf '%s' "$1" | env HOME="$work/home" CLAUDE_PLUGIN_DATA="$work/data" CARDEA_BLIND=1 CARDEA_BLIND_PATHS=/ref/app:/ref/app/dist CARDEA_BLIND_URLS=http://localhost:5173,http://localhost:6006 python3 -I "$HOOK" blind) || fail "blind exited non-zero"
+             [ -z "$out" ] || fail "blind should stay silent: $1"; }
+for f in /ref/app/src/App.tsx /ref/app/../app/x.css src/dist/main.js build/index.html web/.next/server.js storybook-static/index.html; do
+  bdenied "$(tool s Read file_path "$f")"
+done
+bdenied "$(tool s Grep path /ref/app)"
+bdenied "$(tool s Glob path '/ref/app/**/*.tsx')"
+bdenied "$(tool s Glob pattern '/ref/app/src/**/*.tsx')"
+bdenied "$(tool s Grep glob 'dist/*.js')"
+bdenied "$(tool s WebFetch url http://localhost:5173/login)"
+bdenied "$(tool s WebFetch url http://localhost:6006/iframe.html)"
+for c in 'cat /ref/app/src/App.tsx' 'cd /ref/app && pnpm dev' 'ls /ref/app/dist' 'curl -s http://localhost:5173/' \
+         'curl http://localhost:6006/iframe.html' 'cat dist/index.js' 'ls build' 'grep -r Button .next' 'find . -name storybook-static' \
+         'playwright-cli open http://example.com' 'axe screenshot --udid X' 'xcrun simctl io booted screenshot a.png' \
+         'xcrun simctl io booted recordVideo a.mov'; do
+  bdenied "$(tool s Bash command "$c")"
+done
+for t in mcp__playwright__browser_navigate mcp__claude-in-chrome__tabs_context mcp__xcodebuild__screenshot mcp__xcodebuild__record_sim_video; do
+  bdenied "$(tool s "$t" command x)"
+done
+ballowed "$(tool s Read file_path /repo/src/App.tsx)"
+ballowed "$(tool s Edit file_path /repo/src/build.ts)"
+ballowed "$(tool s WebFetch url https://example.com)"
+ballowed "$(tool s mcp__basic-memory__search_notes query x)"
+for c in 'pnpm build' 'git status' 'ls src' 'grep -r TODO src'; do ballowed "$(tool s Bash command "$c")"; done
+
 # commit: the user's one-line format, inline messages only.
 for c in 'git commit -m "feat: add session hooks"' "git commit -m 'fix: handle a missing project'" \
          'git add -A && git commit -m "chore: bump version to 0.3.0" && git log -1' 'git commit -am "docs: fix typo"' \
@@ -149,9 +179,9 @@ rm "$work/home/.claude.json"
 session "$work/Demo"; says "isn't configured"
 
 # every hook fails open on input it can't read.
-for h in session secrets commit web handoff; do allowed "$h" 'not json'; done
+for h in session secrets blind commit web handoff; do allowed "$h" 'not json'; done
 
-# hooks.json: five entries, none tied to a shell; each command runs as written on the Mac, and
+# hooks.json: six entries, none tied to a shell; each command runs as written on the Mac, and
 # with OS=Windows_NT it launches py instead of python3.
 root=$(pwd)/plugins/cardea
 cmds=$(python3 -c '
@@ -183,6 +213,6 @@ while IFS= read -r line; do
 done <<EOF
 $cmds
 EOF
-[ "$count" -eq 5 ] || fail "expected 5 entries in hooks.json, found $count"
+[ "$count" -eq 6 ] || fail "expected 6 entries in hooks.json, found $count"
 
 echo "ok: hooks pass"
