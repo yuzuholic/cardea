@@ -49,7 +49,7 @@ setup() {
 # run <command...>: in the copy, with the fakes and the scratch HOME. output goes to $out.
 run() {
   (cd "$dir/repo" && unset NO_COLOR BASIC_MEMORY_URL LANGFUSE_HOST LANGFUSE_PUBLIC_KEY LANGFUSE_SECRET_KEY &&
-    exec env FAKE_LOG="$log" HOME="$dir/home" PATH="$P" \
+    exec env FAKE_LOG="$log" HOME="$dir/home" PATH="$P" SHELL=/bin/zsh \
     TERM=xterm-256color "$@") > "$out" 2>&1
 }
 # drive <answer>...: install.sh on a terminal, answering its prompts in order.
@@ -224,6 +224,32 @@ for mode in $MODES; do
   [ ! -e "$dir/home/.claude" ] || fail "$name: --check touched ~/.claude"
   uncalled 'brew bundle'; uncalled 'add-json'; uncalled 'mcp remove'; uncalled 'plugin install'; uncalled 'herdr integration'
   said 'basic memory — not configured'
+  unsaid 'add ~/.local/bin to PATH'
+  [ ! -e "$dir/home/.zshrc" ] || fail "$name: --check wrote a shell profile"
+
+  # a fixable warning is offered at the end: yes appends the profile line once, a rerun keeps it
+  # at one, no leaves the profile alone, and runs that cannot ask change nothing.
+  setup fix-yes "$mode"
+  printf 'BASIC_MEMORY_URL=%s/mcp\nLANGFUSE_HOST=%s\nLANGFUSE_PUBLIC_KEY=pk\nLANGFUSE_SECRET_KEY=sk\n' "$NAS" "$NAS" > "$dir/repo/.env"
+  PATHLINE='export PATH="$HOME/.local/bin:$PATH"'
+  drive "" "" "" "" y || fail "$name: exited non-zero"
+  said 'add ~/.local/bin to PATH in ~/.zshrc?'
+  said '~/.local/bin on PATH, set in ~/.zshrc'
+  [ "$(grep -cxF "$PATHLINE" "$dir/home/.zshrc")" -eq 1 ] || fail "$name: ~/.zshrc should hold the PATH line once"
+  drive "" "" "" "" y || fail "$name (rerun): exited non-zero"
+  [ "$(grep -cxF "$PATHLINE" "$dir/home/.zshrc")" -eq 1 ] || fail "$name (rerun): the PATH line was appended again"
+
+  setup fix-no "$mode"
+  printf 'BASIC_MEMORY_URL=%s/mcp\nLANGFUSE_HOST=%s\nLANGFUSE_PUBLIC_KEY=pk\nLANGFUSE_SECRET_KEY=sk\n' "$NAS" "$NAS" > "$dir/repo/.env"
+  drive "" "" "" "" n || fail "$name: exited non-zero"
+  said 'add ~/.local/bin to PATH in ~/.zshrc?'
+  said '~/.local/bin is not on PATH'
+  [ ! -e "$dir/home/.zshrc" ] || fail "$name: answering no still wrote ~/.zshrc"
+
+  setup fix-no-prompt "$mode"
+  term 'sh install.sh --no-prompt' || fail "$name: exited non-zero"
+  unsaid 'add ~/.local/bin to PATH'
+  [ ! -e "$dir/home/.zshrc" ] || fail "$name: --no-prompt wrote ~/.zshrc"
 done
 
 # the same run counts the same number of ok lines with and without gum.

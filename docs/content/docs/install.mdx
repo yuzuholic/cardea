@@ -32,6 +32,10 @@ with the repo and finishes by checking that everything actually answers.
    OrbStack provides) is installed, each NAS service answers, and each MCP server connects.
    It warns when `~/.local/bin`, where graphify and plannotator install, is not on `PATH`, and
    ends with a count of what passed, warned and failed.
+8. **Fixes.** Offers to fix each warning the script can: add `~/.local/bin` to `PATH` in your shell
+   profile, open OrbStack when the Docker daemon is down, retry herdr's integration, and delete a
+   native `claude` that shadows Homebrew's (default no). One yes/no question each, after the count.
+   `--check`, `--no-prompt` and runs without a terminal never ask and never change anything.
 
 ## Answering the prompts
 

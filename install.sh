@@ -62,6 +62,9 @@ N_OK=0; N_WARN=0; N_BAD=0; T0=$(date +%s)
 TAB=$(printf '\t'); ITEMS=; MISSING=
 track() { ITEMS="$ITEMS$1$TAB$2$TAB${3:-}
 "; }
+# warnings the script can fix; offer_fixes asks about each one after the summary.
+FIXES=
+fixable() { FIXES="$FIXES $1"; }
 ok()   { N_OK=$((N_OK + 1)); mark "$SUCCESS" '✓' "$GRN" "$1"; }
 info() {
   if has_gum; then printf '  %s\n' "$(paint --faint -- "· $1")"; return 0; fi
@@ -348,7 +351,7 @@ run_checks() {
   # graphify and plannotator install into ~/.local/bin, which a stock shell profile leaves off PATH.
   case ":$PATH:" in
     *":$HOME/.local/bin:"*) ;;
-    *) warn "~/.local/bin is not on PATH" 'export PATH="$HOME/.local/bin:$PATH"' ;;
+    *) warn "~/.local/bin is not on PATH" 'export PATH="$HOME/.local/bin:$PATH"'; fixable path ;;
   esac
   # an exported key makes claude code bill the api instead of using the subscription login.
   [ -n "${ANTHROPIC_API_KEY:-}" ] && warn "ANTHROPIC_API_KEY is set — claude code will use it instead of your subscription"
@@ -358,7 +361,12 @@ run_checks() {
     bad "Xcode — not found (xcrun mcpbridge needs 26.3+, running)"
   fi
   if command -v docker >/dev/null 2>&1; then
-    docker info >/dev/null 2>&1 && ok "docker daemon running" || warn "docker is installed but its daemon is not running" "open OrbStack (container-use needs it)"
+    if docker info >/dev/null 2>&1; then
+      ok "docker daemon running"
+    else
+      warn "docker is installed but its daemon is not running" "open OrbStack (container-use needs it)"
+      [ ! -d /Applications/OrbStack.app ] || fixable docker
+    fi
   fi
 
   step "services"
@@ -421,7 +429,10 @@ fi
 step "claude code"
 # installed by the Brewfile (claude-code, the stable channel). a native install in ~/.local/bin would
 # shadow it on PATH and update itself out of step, so flag one if it is there.
-[ -x "$HOME/.local/bin/claude" ] && warn "a native claude install in ~/.local/bin shadows homebrew's — remove it"
+if [ -x "$HOME/.local/bin/claude" ]; then
+  warn "a native claude install in ~/.local/bin shadows homebrew's — remove it"
+  fixable shadow
+fi
 command -v claude >/dev/null 2>&1 || die "claude code is not installed — the Brewfile step should have done it"
 ok "claude $(claude --version 2>/dev/null | cut -d' ' -f1)"
 
@@ -446,7 +457,7 @@ fi
 # first and alone.
 if command -v herdr >/dev/null 2>&1; then
   spin "installing herdr's claude integration" herdr integration install claude >/dev/null \
-    && ok "herdr integration" || warn "herdr integration failed — run it by hand"
+    && ok "herdr integration" || { warn "herdr integration failed — run it by hand"; fixable herdr; }
 fi
 
 # --- parallel installs -----------------------------------------------------
@@ -774,11 +785,77 @@ VERIFY
   [ -z "$v_redo" ] || MCP_LIST=$(claude mcp list 2>/dev/null || true)
 }
 
+# confirm <question> <y|n>: the answer is the exit status, and the second argument is what enter
+# picks. eof (ctrl-d, or a closed tty) answers no.
+confirm() {
+  q_def=$2
+  if has_gum; then
+    q_flag=--default=true; [ "$q_def" = y ] || q_flag=--default=false
+    q_rc=0
+    gum confirm "$1" "$q_flag" --prompt.foreground "$ACCENT" --selected.background "$ACCENT" \
+      --no-show-help < /dev/tty > /dev/tty 2>&1 || q_rc=$?
+    [ "$q_rc" -ne 130 ] || { printf '\n' > /dev/tty; exit 130; }
+    if [ "$q_rc" -le 1 ]; then
+      if [ "$q_rc" -eq 0 ]; then chosen "$1" yes; else chosen "$1" no; fi
+      return "$q_rc"
+    fi
+  fi
+  if [ "$q_def" = y ]; then q_hint='[Y/n]'; else q_hint='[y/N]'; fi
+  printf '  %s%s%s %s%s%s ' "$B" "$1" "$R" "$D" "$q_hint" "$R" > /dev/tty
+  read -r q_reply < /dev/tty || q_reply=n
+  case "$q_reply" in
+    '') [ "$q_def" = y ] ;;
+    [Yy]*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# the profile that a new shell reads for its PATH.
+profile_file() {
+  case "${SHELL:-}" in
+    */zsh) echo "$HOME/.zshrc" ;;
+    */bash) echo "$HOME/.bashrc" ;;
+    *) echo "$HOME/.profile" ;;
+  esac
+}
+
+# offer each fixable warning once, after the summary. nothing is asked or changed without a prompt.
+offer_fixes() {
+  [ -n "$PROMPT" ] && [ -n "$FIXES" ] || return 0
+  printf '\n'
+  for f_id in $FIXES; do
+    case "$f_id" in
+      path)
+        f_file=$(profile_file); f_line='export PATH="$HOME/.local/bin:$PATH"'
+        confirm "add ~/.local/bin to PATH in ~${f_file#"$HOME"}?" y || continue
+        if { [ -f "$f_file" ] && grep -qxF "$f_line" "$f_file"; } || printf '%s\n' "$f_line" >> "$f_file"; then
+          PATH="$HOME/.local/bin:$PATH"; ok "~/.local/bin on PATH, set in ~${f_file#"$HOME"}"
+        else
+          bad "could not write to $f_file"
+        fi ;;
+      docker)
+        confirm "open OrbStack to start docker?" y || continue
+        if open -a OrbStack; then ok "OrbStack opened"; else bad "could not open OrbStack"; fi ;;
+      herdr)
+        confirm "retry herdr's claude integration?" y || continue
+        if spin "installing herdr's claude integration" herdr integration install claude >/dev/null; then
+          ok "herdr integration"
+        else
+          bad "herdr integration failed again — run it by hand"
+        fi ;;
+      shadow)
+        confirm "delete the native claude in ~/.local/bin?" n || continue
+        if rm "$HOME/.local/bin/claude"; then ok "removed the native claude in ~/.local/bin"; else bad "could not delete ~/.local/bin/claude"; fi ;;
+    esac
+  done
+}
+
 step "installing"
 await_jobs
 verify_claude
 run_checks
 summary
+offer_fixes
 
 # --- next steps ------------------------------------------------------------
 if has_gum; then
