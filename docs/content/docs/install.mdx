@@ -16,15 +16,13 @@ with the repo and finishes by checking that everything actually answers.
 
 1. **Packages.** Applies the `Brewfile`. Third-party taps are trusted first, because
    Homebrew 7 refuses them otherwise. A failed package shows as a failure, not a tick.
-2. **Configuration.** Asks for the Basic Memory and Langfuse addresses and the Langfuse keys,
+2. **Configuration.** Asks for the NAS and Langfuse addresses and the Langfuse keys,
    then writes them to `.env` (mode 600, never committed).
 3. **Rules.** Links `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`.
 4. **Claude Code.** Installed by the `Brewfile` as `claude-code`, the stable channel. The script then
    registers the MCP servers and plugins. See [Claude Code](/docs/claude-code). It also turns
-   on the task list (`CLAUDE_CODE_ENABLE_TODO_TOOLS`) in `~/.claude/settings.json` and adds the
-   read-only Basic Memory tools (`search_notes`, `read_note`, `build_context`, `recent_activity`,
-   `list_directory`, `list_memory_projects`) to `permissions.allow`, so lookups don't wait on a
-   prompt. The write tools stay unlisted and still ask.
+   on the task list (`CLAUDE_CODE_ENABLE_TODO_TOOLS`) in `~/.claude/settings.json` and adds Hindsight's
+   `delete_document` to `permissions.allow`, so that call doesn't wait on a prompt.
 5. **herdr.** Installs herdr's Claude Code integration.
 6. **Installs in parallel.** Plugins, graphify, Playwright CLI with Chromium, the vendored
    skills and the MCP servers run side by side. Those that need no answers start before the
@@ -48,8 +46,8 @@ with the repo and finishes by checking that everything actually answers.
 
 ## Answering the prompts
 
-Type as little as you like. `192.0.2.10` becomes `http://192.0.2.10:8766/mcp` for
-Basic Memory, and Langfuse then defaults to the same machine on port 3000. A full address
+Type as little as you like. `192.0.2.10` becomes `http://192.0.2.10` as `NAS_URL`, the
+Hindsight address is derived from it, and Langfuse then defaults to the same machine on port 3000. A full address
 starting with `http://` is kept exactly as typed. An address ending in `.local` is kept, with
 a warning that it can stall; see [Use a fixed address](/docs/nas#use-a-fixed-address).
 
@@ -63,9 +61,7 @@ Each address is tested the moment you enter it. If the test fails, the prompt as
 Keys are typed hidden. Leaving the Langfuse keys blank is fine: tracing simply stays off
 until you add them and run the script again.
 
-The tests ask each service something it has to understand. Basic Memory must answer an MCP
-`initialize` with its own name and version, which also proves the transport is right.
-Langfuse must answer `200` on `/api/public/health`.
+The tests ask each service something it has to understand. Langfuse must answer `200` on `/api/public/health`.
 
 ## Nothing gets overwritten
 
@@ -86,8 +82,8 @@ that, Homebrew would swallow the rest of the script mid-run.
 ## Windows
 
 `install.ps1` is the Windows counterpart. It links the global rules and the `tldr` and `baby`
-skills, registers the Basic Memory MCP server, and installs the plugins.
-It does not set the Basic Memory allow rules or the default agent.
+skills, registers the Hindsight MCP server, and installs the plugins.
+It does not set the Hindsight allow rule or the default agent.
 
 Prerequisites:
 
@@ -104,8 +100,8 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 `pwsh -File .\install.ps1` works the same under PowerShell 7. Add `-Check` to report
-prerequisites and links without changing anything. Basic Memory is registered only when `.env`
-holds `BASIC_MEMORY_URL`.
+prerequisites and links without changing anything. Hindsight is registered only when `.env`
+holds `NAS_URL` and `HINDSIGHT_MCP_TOKEN`. A `.env` with only `BASIC_MEMORY_URL` still works for one release: `NAS_URL` is derived from it.
 
 ## After installing
 

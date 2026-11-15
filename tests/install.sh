@@ -1,7 +1,7 @@
 #!/bin/sh
 # install.sh end to end, against stand-ins: brew, claude and herdr in
 # tests/fakes log their arguments instead of installing anything, and tests/fakes/nas.py
-# answers for basic memory and langfuse on 127.0.0.1:8766. every case runs with the plain
+# answers for the NAS url and langfuse on 127.0.0.1:8766. every case runs with the plain
 # prompts, then again with gum when gum is installed. needs expect, python3, curl, git.
 set -eu
 cd "$(dirname "$0")/.."
@@ -48,7 +48,7 @@ setup() {
 }
 # run <command...>: in the copy, with the fakes and the scratch HOME. output goes to $out.
 run() {
-  (cd "$dir/repo" && unset NO_COLOR BASIC_MEMORY_URL LANGFUSE_HOST LANGFUSE_PUBLIC_KEY LANGFUSE_SECRET_KEY &&
+  (cd "$dir/repo" && unset NO_COLOR NAS_URL BASIC_MEMORY_URL HINDSIGHT_MCP_TOKEN LANGFUSE_HOST LANGFUSE_PUBLIC_KEY LANGFUSE_SECRET_KEY &&
     exec env FAKE_LOG="$log" HOME="$dir/home" PATH="$P" SHELL=/bin/zsh \
     TERM=xterm-256color "$@") > "$out" 2>&1
 }
@@ -66,9 +66,9 @@ unsaid()  { ! grep -aqF -- "$1" "$out" || fail "$name: output should not contain
 called()  { grep -qF -- "$1" "$log" || fail "$name: expected a call: $1"; }
 uncalled() { ! grep -qF -- "$1" "$log" || fail "$name: unexpected call: $1"; }
 calls()   { [ "$(grep -cF -- "$1" "$log")" -eq "$2" ] || fail "$name: expected $2 calls of '$1', got $(grep -cF -- "$1" "$log")"; }
-# the work a full run does: four mcp servers, the plugins, the vendored skills, the rules link.
+# the work a full run does: three mcp servers, the plugins, the vendored skills, the rules link.
 installed() {
-  calls 'mcp add-json -s user' 4
+  calls 'mcp add-json -s user' 3
   called "claude plugin install langfuse-observability --marketplace langfuse/Claude-Observability-Plugin -y"
   called "claude plugin install cardea --marketplace $dir/repo -y"
   for m in superpowers:obra/superpowers-marketplace ponytail:DietrichGebert/ponytail \
@@ -89,12 +89,9 @@ installed() {
   settings_has "$dir/home/.claude/settings.json"
   said 'claude auth login'
 }
-# the read-only basic memory tools are allowed once each, and the write tools are not.
+# hindsight delete_document is allowed once.
 settings_has() {
-  for t in search_notes read_note build_context recent_activity list_directory list_memory_projects; do
-    [ "$(grep -c "\"mcp__basic-memory__$t\"" "$1")" -eq 1 ] || fail "$name: $t should be allowed exactly once in $1"
-  done
-  ! grep -q 'mcp__basic-memory__\(write\|edit\|move\|delete\)_note' "$1" || fail "$name: a basic memory write tool is allowed"
+  [ "$(grep -c '"mcp__hindsight__delete_document"' "$1")" -eq 1 ] || fail "$name: delete_document should be allowed exactly once in $1"
 }
 # gum drew the prompts in gum mode, and never in plain mode.
 prompted_by() {
@@ -104,22 +101,21 @@ prompted_by() {
 sh -n install.sh || fail "install.sh has a syntax error"
 
 for mode in $MODES; do
-  # a bare ip gets the default's port and path; langfuse defaults to the same host.
+  # a full url is taken as typed; langfuse defaults to the same host.
   # nothing serves langfuse on :3000 here, so its retry is ended and kept untested.
   setup bare-ip "$mode"
-  drive 127.0.0.1 "" || fail "$name: exited non-zero"
-  has_env BASIC_MEMORY_URL "$NAS/mcp"
+  drive "$NAS" "" || fail "$name: exited non-zero"
+  has_env NAS_URL "$NAS"
   has_env LANGFUSE_HOST http://127.0.0.1:3000
-  said "speaks MCP: fake-nas 1"
+  said "nas url — $NAS reachable"
   prompted_by
   installed http://127.0.0.1:3000
-  called "basic-memory {\"type\":\"http\",\"url\":\"$NAS/mcp\"}"
 
   # a bad port, enter twice (each retries), then the bare ip recovers. keys are hidden.
   setup retry "$mode"
-  drive 127.0.0.1:1 "" "" 127.0.0.1 "$NAS" pk-visible-test sk-hidden-test || fail "$name: exited non-zero"
-  [ "$(grep -c 'testing http://127.0.0.1:1/mcp' "$out")" -eq 3 ] || fail "$name: expected the bad url to be tested 3 times"
-  has_env BASIC_MEMORY_URL "$NAS/mcp"
+  drive 127.0.0.1:1 "" "" "$NAS" "$NAS" pk-visible-test sk-hidden-test || fail "$name: exited non-zero"
+  [ "$(grep -c 'testing http://127.0.0.1:1' "$out")" -eq 3 ] || fail "$name: expected the bad url to be tested 3 times"
+  has_env NAS_URL "$NAS"
   has_env LANGFUSE_HOST "$NAS"
   said "langfuse url — healthy"
   has_env LANGFUSE_PUBLIC_KEY pk-visible-test
@@ -130,7 +126,7 @@ for mode in $MODES; do
 
   # a rerun where enter keeps every existing value, keys included.
   drive "" "" "" "" || fail "$name (rerun): exited non-zero"
-  has_env BASIC_MEMORY_URL "$NAS/mcp"
+  has_env NAS_URL "$NAS"
   has_env LANGFUSE_SECRET_KEY sk-hidden-test
   # gum splits its placeholder around the cursor, so check its summary line instead.
   if [ "$mode" = gum ]; then said 'kept'; else said '[keep existing]'; fi
@@ -138,7 +134,7 @@ for mode in $MODES; do
   # a stray paste saved in .env neither runs as a command nor is offered back, and a
   # pasted value with spaces is asked again.
   setup stray "$mode"
-  printf 'BASIC_MEMORY_URL=%s/mcp\nLANGFUSE_HOST=%s\nLANGFUSE_PUBLIC_KEY=# Persona: x\nnot a setting\n' "$NAS" "$NAS" > "$dir/repo/.env"
+  printf 'NAS_URL=%s\nLANGFUSE_HOST=%s\nLANGFUSE_PUBLIC_KEY=# Persona: x\nnot a setting\n' "$NAS" "$NAS" > "$dir/repo/.env"
   drive "" "" "pk with spaces" pk-ok sk-ok || fail "$name: exited non-zero"
   unsaid 'command not found'
   said "the saved langfuse public key isn't a key"
@@ -148,21 +144,43 @@ for mode in $MODES; do
 
   # a bad langfuse address, then skip keeps it untested.
   setup skip "$mode"
-  drive 127.0.0.1 127.0.0.1:1 skip || fail "$name: exited non-zero"
+  drive "$NAS" 127.0.0.1:1 skip || fail "$name: exited non-zero"
   has_env LANGFUSE_HOST http://127.0.0.1:1
   said "keeping http://127.0.0.1:1 untested"
 
   # the end key (ctrl-d, or esc in gum) stops the retry loop instead of spinning.
   setup end-key "$mode"
   drive 127.0.0.1:1 || fail "$name: exited non-zero"
-  has_env BASIC_MEMORY_URL http://127.0.0.1:1/mcp
-  said "keeping http://127.0.0.1:1/mcp untested"
+  has_env NAS_URL http://127.0.0.1:1
+  said "keeping http://127.0.0.1:1 untested"
+
+  # a token in .env registers hindsight on the NAS host, with the bearer header, and the
+  # rewritten .env keeps the token. without one (every case above) nothing is registered.
+  setup hindsight "$mode"
+  printf 'NAS_URL=%s\nHINDSIGHT_MCP_TOKEN=hs-token-test\n' "$NAS" > "$dir/repo/.env"
+  term 'sh install.sh --no-prompt' || fail "$name: exited non-zero"
+  calls 'mcp add-json -s user' 4
+  called "hindsight {\"type\":\"http\",\"url\":\"http://127.0.0.1:8888/mcp/cardea/\",\"headers\":{\"Authorization\":\"Bearer hs-token-test\"}}"
+  has_env HINDSIGHT_MCP_TOKEN hs-token-test
+  unsaid hs-token-test
+
+  # a .env with only the old BASIC_MEMORY_URL still gives hindsight its host, and is rewritten with
+  # NAS_URL. existing allow rules are kept.
+  setup legacy-env "$mode"
+  printf 'BASIC_MEMORY_URL=%s/mcp\nHINDSIGHT_MCP_TOKEN=hs-token-test\n' "$NAS" > "$dir/repo/.env"
+  mkdir -p "$dir/home/.claude"
+  printf '{"permissions":{"allow":["Bash(ls:*)"]}}' > "$dir/home/.claude/settings.json"
+  term 'sh install.sh --no-prompt' || fail "$name: exited non-zero"
+  has_env NAS_URL http://127.0.0.1
+  called "hindsight {\"type\":\"http\",\"url\":\"http://127.0.0.1:8888/mcp/cardea/\""
+  settings_has "$dir/home/.claude/settings.json"
+  grep -q '"Bash(ls:\*)"' "$dir/home/.claude/settings.json" || fail "$name: an unrelated allow rule was dropped"
 
   # --no-prompt on a terminal asks nothing and finishes.
   setup no-prompt "$mode"
   term 'sh install.sh --no-prompt' || fail "$name: exited non-zero"
   said '.env created with placeholder values (mode 600)'
-  has_env BASIC_MEMORY_URL http://truenas.local:8766/mcp
+  has_env NAS_URL http://truenas.local
   installed http://truenas.local:3000
   said 'running 12 jobs in parallel'
   said '~/.local/bin is not on PATH'
@@ -224,7 +242,7 @@ $TAGLINE" ] || fail "$name: --no-prompt changed the profile"
   said 'simulated failure for: plugin install ponytail'
   called 'plugin install humanizer'
   called 'plugin install cloudflare'
-  calls 'mcp add-json -s user' 4
+  calls 'mcp add-json -s user' 3
   said 'failed'
 
   # a plugin install that "succeeds" without being recorded is found and redone, and says so.
@@ -262,25 +280,25 @@ $TAGLINE" ] || fail "$name: --no-prompt changed the profile"
   [ ! -e "$dir/repo/.env" ] || fail "$name: --check wrote .env"
   [ ! -e "$dir/home/.claude" ] || fail "$name: --check touched ~/.claude"
   uncalled 'brew bundle'; uncalled 'add-json'; uncalled 'mcp remove'; uncalled 'plugin install'; uncalled 'herdr integration'
-  said 'basic memory — not configured'
+  said 'nas — not configured'
   unsaid 'add ~/.local/bin to PATH'
   [ ! -e "$dir/home/.zshrc" ] || fail "$name: --check wrote a shell profile"
 
   # a .local address draws the mDNS warning in --check; an ip address does not.
   setup mdns-local "$mode"
-  printf 'BASIC_MEMORY_URL=http://truenas.local:8766/mcp\nLANGFUSE_HOST=http://truenas.local:3000\n' > "$dir/repo/.env"
+  printf 'NAS_URL=http://truenas.local\nLANGFUSE_HOST=http://truenas.local:3000\n' > "$dir/repo/.env"
   term 'sh install.sh --check' || true
   said 'can stall for seconds'
 
   setup mdns-ip "$mode"
-  printf 'BASIC_MEMORY_URL=http://192.0.2.10:8766/mcp\nLANGFUSE_HOST=http://192.0.2.10:3000\n' > "$dir/repo/.env"
+  printf 'NAS_URL=http://192.0.2.10\nLANGFUSE_HOST=http://192.0.2.10:3000\n' > "$dir/repo/.env"
   term 'sh install.sh --check' || true
   unsaid 'can stall for seconds'
 
   # a fixable warning is offered at the end: yes appends the profile line once, a rerun keeps it
   # at one, no leaves the profile alone, and runs that cannot ask change nothing.
   setup fix-yes "$mode"
-  printf 'BASIC_MEMORY_URL=%s/mcp\nLANGFUSE_HOST=%s\nLANGFUSE_PUBLIC_KEY=pk\nLANGFUSE_SECRET_KEY=sk\n' "$NAS" "$NAS" > "$dir/repo/.env"
+  printf 'NAS_URL=%s\nLANGFUSE_HOST=%s\nLANGFUSE_PUBLIC_KEY=pk\nLANGFUSE_SECRET_KEY=sk\n' "$NAS" "$NAS" > "$dir/repo/.env"
   PATHLINE='export PATH="$HOME/.local/bin:$PATH"'
   drive "" "" "" "" y || fail "$name: exited non-zero"
   said 'add ~/.local/bin to PATH in ~/.zshrc?'
@@ -290,7 +308,7 @@ $TAGLINE" ] || fail "$name: --no-prompt changed the profile"
   [ "$(grep -cxF "$PATHLINE" "$dir/home/.zshrc")" -eq 1 ] || fail "$name (rerun): the PATH line was appended again"
 
   setup fix-no "$mode"
-  printf 'BASIC_MEMORY_URL=%s/mcp\nLANGFUSE_HOST=%s\nLANGFUSE_PUBLIC_KEY=pk\nLANGFUSE_SECRET_KEY=sk\n' "$NAS" "$NAS" > "$dir/repo/.env"
+  printf 'NAS_URL=%s\nLANGFUSE_HOST=%s\nLANGFUSE_PUBLIC_KEY=pk\nLANGFUSE_SECRET_KEY=sk\n' "$NAS" "$NAS" > "$dir/repo/.env"
   drive "" "" "" "" n || fail "$name: exited non-zero"
   said 'add ~/.local/bin to PATH in ~/.zshrc?'
   said '~/.local/bin is not on PATH'
@@ -325,11 +343,11 @@ if [ -n "$GUM" ]; then
   setup bootstrap plain
   mkdir "$dir/late"; P="$ROOT/tests/fakes:$dir/late:$SYS"
   mode=gum; FAKE_GUM=$GUM; FAKE_GUM_DIR="$dir/late"; export FAKE_GUM FAKE_GUM_DIR
-  drive 127.0.0.1 "" || fail "$name: exited non-zero"
+  drive "$NAS" "" || fail "$name: exited non-zero"
   unset FAKE_GUM FAKE_GUM_DIR
   [ -x "$dir/late/gum" ] || fail "$name: the fake bundle did not provide gum"
   said '›'
-  has_env BASIC_MEMORY_URL "$NAS/mcp"
+  has_env NAS_URL "$NAS"
 fi
 
 echo "ok: install.sh cases pass (${MODES})"

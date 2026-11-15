@@ -53,10 +53,10 @@ It is safe to run again at any time. Existing config is backed up, never overwri
 
 ### Windows: `install.ps1`
 
-Links the global rules and the `tldr` and `baby` skills, registers the Basic Memory MCP server
+Links the global rules and the `tldr` and `baby` skills, registers the Hindsight MCP server
 and the plugins. Needs Git for Windows, Python 3, uv, pnpm, GitHub CLI, Claude Code and Developer Mode
-(Settings > System > For developers) or an elevated shell. Put `BASIC_MEMORY_URL` in `.env` to
-register Basic Memory.
+(Settings > System > For developers) or an elevated shell. Put `NAS_URL` and `HINDSIGHT_MCP_TOKEN` in `.env` to
+register Hindsight.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install.ps1
@@ -67,13 +67,12 @@ Add `-Check` to report prerequisites and links without changing anything.
 
 ### The NAS: `nas/compose.yml`
 
-Runs the self-hosted services (Basic Memory and Langfuse) as one service,
-`yuzuholic/cardea`, which starts each of them from its official image. Put three things in one
+Runs the self-hosted services (Hindsight and Langfuse) as one service,
+`yuzuholic/cardea`, which starts each of them from its official image. Put two things in one
 folder on the NAS:
 
 - `compose.yml`, from `nas/`
 - `.env`, filled in from `nas/.env.example`
-- `kb/`, the notes
 
 ```sh
 sudo docker compose up -d
@@ -91,11 +90,11 @@ claude plugin marketplace add yuzuholic/cardea
 claude plugin install cardea@cardea
 ```
 
-**20 skills**
+**21 skills**
 
 | For | Skills |
 |---|---|
-| The self-hosted stack | `basic-memory`, `langfuse`, `obsidian`, `graphify` |
+| The self-hosted stack | `hindsight`, `remember`, `langfuse`, `obsidian`, `graphify` |
 | Looking things up | `retrieval-order` |
 | Sessions | `handoff`, `herdr` |
 | Diagrams | `mermaid` |
@@ -127,7 +126,7 @@ or for a quick refresh run `claude plugin update cardea@cardea`.
 |---|---|
 | Agent | [Claude Code](https://github.com/anthropics/claude-code) |
 | Tracing | [Langfuse](https://github.com/langfuse/langfuse), self-hosted |
-| Notes | [Basic Memory](https://github.com/basicmachines-co/basic-memory) |
+| Memory | Hindsight, self-hosted |
 | Code understanding | [graphify](https://pypi.org/project/graphifyy/) |
 | iOS | [XcodeBuildMCP](https://github.com/cameroncooke/XcodeBuildMCP), [SwiftLens](https://github.com/swiftlens/swiftlens), Xcode's `mcpbridge`, [xcode-build-server](https://github.com/SoundBlaster/xcode-build-server) |
 | Terminal | [herdr](https://github.com/ogulcancelik/herdr), [gum](https://github.com/charmbracelet/gum) for the installer |

@@ -11,10 +11,11 @@ re-adds them, which keeps them in line with the script.
 | <Tool icon="xcode.svg" mono>`xcodebuild`</Tool> | Builds, tests and runs iOS apps | Local | `npx -y xcodebuildmcp@2.7.0 mcp` |
 | <Tool icon="swift.svg" mono>`swiftlens`</Tool> | Swift symbol lookups | Local | `uvx swiftlens@0.2.14` |
 | <Tool icon="xcode.svg" mono>`xcode`</Tool> | Apple's bridge into a running Xcode | Local | `xcrun mcpbridge` |
-| <Tool icon="basic-memory.png">`basic-memory`</Tool> | Durable notes | NAS | HTTP, the URL from `.env` |
+| `hindsight` | Durable memory | NAS | HTTP, port 8888 on the `NAS_URL` host, bank `cardea`, bearer token from `.env` |
 
 Values come from `.env` when the script runs. After changing `.env`, run the script again.
-Without a Basic Memory URL in `.env`, the script skips `basic-memory`.
+Without `NAS_URL` or `HINDSIGHT_MCP_TOKEN`, it skips `hindsight`; the
+installer does not ask for the token, so add it to `.env` by hand and it is kept.
 
 The Xcode bridge only connects while Xcode is open, so Claude Code reports it as failed the
 rest of the time. That is expected.

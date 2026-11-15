@@ -13,7 +13,7 @@ Cardea has two entry points, each with its own settings file.
 
 ### The Mac: `install.sh`
 
-Installs Claude Code and everything around it. It asks for the Basic Memory and Langfuse
+Installs Claude Code and everything around it. It asks for the NAS and Langfuse
 addresses and the Langfuse keys (listed in `.env.example`) and keeps them in `.env`.
 
 ```sh
@@ -31,7 +31,7 @@ curl -fsSL https://raw.githubusercontent.com/yuzuholic/cardea/main/install.sh | 
 ### The NAS: `nas/compose.yml`
 
 Runs the services Claude Code talks to, self-hosted, as one service. Put `compose.yml`, a
-`.env` filled in from `nas/.env.example`, and `kb/` in one folder on the NAS, then:
+`.env` filled in from `nas/.env.example`, in one folder on the NAS, then:
 
 ```sh
 sudo docker compose up -d
@@ -49,10 +49,10 @@ sudo docker compose up -d
 - **Claude Code**, signed in with your Claude subscription.
 - **Global rules** from `claude/CLAUDE.md`, linked into `~/.claude/`.
 - **Four [MCP servers](/docs/mcp)** registered for every project: XcodeBuildMCP, SwiftLens,
-  the Xcode bridge and Basic Memory.
+  the Xcode bridge and Hindsight.
 - **[Skills](/docs/skills) and [agents](/docs/agents)** from the Cardea plugin.
 - **One plugin**: Langfuse, for tracing every session.
-- **The NAS services** those talk to: Basic Memory and Langfuse, started on the NAS by
+- **The NAS services** those talk to: Hindsight and Langfuse, started on the NAS by
   `nas/compose.yml`.
 
 ## Where to go next

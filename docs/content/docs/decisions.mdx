@@ -90,7 +90,7 @@ column heading to sort.
       title: 'Every implementer has a time budget',
       area: 'Agent',
       status: 'Adopted',
-      why: <>An agent that runs long unexpectedly must be investigated, not left running or silently killed. The orchestrator sets a budget for every task, in minutes plus a due time, in the plan and the brief, and arms the background wait with it as its timeout from the start. On an overrun it looks first: an implementer waiting on a prompt goes to the user; one still producing output gets one extension of half its budget and a one-line note; one with no new output, or any second overrun, is stopped and reported with its last output, and the user decides. Outside herdr nothing can look inside a subagent, so an overrun goes straight to the user. Each batch's report lists budget against actual time, and the rows are appended to a Basic Memory note per project (<code>plans/&lt;Project&gt; Task Time Estimates.md</code>, 50 recent rows plus rules of thumb) that the orchestrator reads when planning; cardea has no Basic Memory project, so there the report is the only record. Rejected: implementers estimating their own time (a task that hangs before estimating has no deadline), one fixed budget for all tasks, always asking the user at the deadline, restarting overrunning implementers automatically, extending without limit, and keeping the log only in the repo's git folder (Basic Memory is durable and visible in Obsidian).</>,
+      why: <>An agent that runs long unexpectedly must be investigated, not left running or silently killed. The orchestrator sets a budget for every task, in minutes plus a due time, in the plan and the brief, and arms the background wait with it as its timeout from the start. On an overrun it looks first: an implementer waiting on a prompt goes to the user; one still producing output gets one extension of half its budget and a one-line note; one with no new output, or any second overrun, is stopped and reported with its last output, and the user decides. Outside herdr nothing can look inside a subagent, so an overrun goes straight to the user. Each batch's report lists budget against actual time, and the rows are appended to the vault page <code>&lt;Project&gt;/Plans/&lt;Project&gt; Task Time Estimates.md</code> (50 recent rows plus rules of thumb), edited directly as a file, that the orchestrator reads when planning. Rejected: implementers estimating their own time (a task that hangs before estimating has no deadline), one fixed budget for all tasks, always asking the user at the deadline, restarting overrunning implementers automatically, extending without limit, and keeping the log only in the repo's git folder (the vault is durable and visible in Obsidian).</>,
     },
     {
       title: 'One tab per implementer',
@@ -159,6 +159,12 @@ column heading to sort.
       why: <>Running a compose file straight from a registry needs Docker Compose 2.34 or later, and the NAS has 2.32.3.</>,
     },
     {
+      title: 'Hindsight runs on the Claude subscription through a setup-token',
+      area: 'NAS',
+      status: 'Adopted',
+      why: <>Hindsight's <code>claude-code</code> provider takes a long-lived token from <code>claude setup-token</code> as <code>CLAUDE_CODE_OAUTH_TOKEN</code>, so fact extraction needs no API key, no Claude CLI on the NAS and no mounted login. Mounting the NAS user's login read-only, as upstream's example does, would stop the CLI from saving refreshed tokens. The token lasts about a year and must then be renewed. Decided 2026-11-15.</>,
+    },
+    {
       title: 'Hooks enforce the rules that matter',
       area: 'Agent',
       status: 'Adopted',
@@ -185,13 +191,13 @@ column heading to sort.
     {
       title: 'Apps, research, plans and archive in each project',
       area: 'Notes',
-      status: 'Adopted',
+      status: 'Replaced',
       why: <>Every project has <code>apps/&lt;app&gt;/&lt;area&gt;/</code> for lasting knowledge about each thing it builds or runs, <code>research/&lt;topic&gt;/</code> for outside material, <code>plans/&lt;plan&gt;/</code> for work in flight and <code>archive/&lt;topic&gt;/</code> for finished plans and superseded pages. The homelab project uses <code>apps/</code> for what it runs: <code>apps/nas/</code>, <code>apps/network/</code> and <code>apps/mac/</code>. Every folder has a portal page naming its parent, and portal titles are unique vault-wide. A vault-root <code>system/</code> folder holds the project-agnostic rules and six templates in <code>system/templates/</code>; the <code>basic-memory</code> skill mirrors them in full for vaults without <code>system/</code>, and where it exists it wins. The templates are excluded from Basic Memory with an ignore file (<code>.bmignore</code> or <code>.gitignore</code>; which one, and where it must sit, is unverified until checked after the server restart), because Basic Memory stamps a <code>permalink</code> and a missing <code>title</code> into indexed markdown and Obsidian's Templates plugin would copy those into new notes; if the templates get stamped anyway, the fallback is moving them to a dot-folder such as <code>kb/.templates/</code> and repointing Obsidian's Templates plugin. Apps and research beside the PARA folders, nesting inside PARA, and PARA inside each app were rejected.</>,
     },
     {
       title: 'Notes as wiki pages, one template per kind',
       area: 'Notes',
-      status: 'Adopted',
+      status: 'Replaced',
       why: <>Notes are read by the user in Obsidian and by agents through Basic Memory, and the first migrated notes read like database rows. Every note now has a title, a <code>Part of</code> breadcrumb, a short lead and a body from its kind's template (decision, reference, gotcha, constraint, plan or area), with the indexed key facts and typed relations below a rule at the bottom. Links go in the prose, areas get portal pages, and each project has a front page. Each key fact now exists twice, and the vault depends on the Automatic Table of Contents plugin. One universal template, observations as the body, and a pilot with lint checks were considered. The <code>basic-memory</code> skill holds the templates.</>,
     },
     {
@@ -203,7 +209,7 @@ column heading to sort.
     {
       title: 'Plain PARA folder names',
       area: 'Notes',
-      status: 'Adopted',
+      status: 'Replaced',
       why: <>The folders are <code>plans/</code>, <code>areas/</code>, <code>resources/</code> and <code>archive/</code>, without 1- to 4- prefixes. The only cost is that Obsidian's sidebar sorts them alphabetically. Numbered prefixes were rejected because sidebar order was all they bought. The <code>areas/</code> and <code>resources/</code> folders were later replaced by <code>apps/</code> and <code>research/</code>.</>,
     },
     {
@@ -481,6 +487,30 @@ column heading to sort.
       area: 'Tools',
       status: 'Adopted',
       why: <>AXe 2.0's agent mode checks the target, sends the input and returns the settled screen, which replaces our workarounds for fire-and-forget taps, sleeps and coordinate taps. The official skill is maintained upstream, and our Xcode 27 gotchas are unverified on 2.0. Decided 2026-11-15.</>,
+    },
+    {
+      title: 'Hindsight preferences are global by default',
+      area: 'Memory',
+      status: 'Adopted',
+      why: <>A preference the user states is saved for every project unless the user ties it to one app, such as how Aletheia should work. Most stated preferences are about the user rather than a product, and per-project filing would make the user repeat them in every repository. Decided 2026-11-15.</>,
+    },
+    {
+      title: 'Superseded Hindsight decisions are invalidated, not overwritten',
+      area: 'Memory',
+      status: 'Adopted',
+      why: <>A changed decision is saved as a new memory and the old one is invalidated with the reason it was replaced, so recall returns the current choice and can still answer why it changed. Overwriting by <code>document_id</code> would leave that history only in the audit log, which agents do not read. Decided 2026-11-15.</>,
+    },
+    {
+      title: 'Hindsight saves only what the context marks as a lasting choice',
+      area: 'Memory',
+      status: 'Adopted',
+      why: <>Whether to save is judged on one scale: is this a design choice, constraint or preference meant to outlive the session, or something said for the work at hand that belongs only in the session's own context? Trigger phrases alone do not decide it. Decided 2026-11-15.</>,
+    },
+    {
+      title: 'Basic Memory dropped; the vault is plain Obsidian files',
+      area: 'Memory',
+      status: 'Adopted',
+      why: <>Hindsight already holds decisions and preferences with better recall, so a second memory server duplicated it. Basic Memory's stamping of notes and its "never edit over SMB" rule also fought direct editing. The vault is now plain files edited directly, written to the "Agent-First Vault" style in the <code>obsidian</code> skill. Plans are <code>/tmp</code> files with a TODO section, passed by path so they survive compaction. Task time estimates are a vault page per project.</>,
     },
     {
       title: 'Anti-slop skills and AI-detector humanizers',

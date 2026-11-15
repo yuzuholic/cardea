@@ -9,9 +9,8 @@ service from its official image, next to itself, on the NAS's own Docker. Stoppi
 stops the whole stack.
 
 On the NAS it lives at `/mnt/main/Docker/lab`; over SMB it shows up as
-`/Volumes/Docker/lab`. That folder holds three things: `compose.yml` (from `nas/` in the
-repo), which declares every setting the stack reads; `.env`, which holds their values; and
-`kb/` with the notes.
+`/Volumes/Docker/lab`. That folder holds two things: `compose.yml` (from `nas/` in the
+repo), which declares every setting the stack reads; and `.env`, which holds their values.
 
 ```sh
 cd /mnt/main/Docker/lab
@@ -71,16 +70,17 @@ The stack used to run straight from `docker-compose.yml` on the NAS. To switch, 
 
 | Service | Port | Reachable from |
 |---|---|---|
-| Basic Memory | 8766 | LAN |
+| Hindsight | 8888 | LAN |
+| Hindsight control plane | 9999 | The NAS itself only |
 | Langfuse web | 3000 | LAN |
 | MinIO | 9090 | LAN |
-| ClickHouse, Postgres, Redis, Langfuse worker | — | The NAS itself only |
+| ClickHouse, Postgres, Hindsight's Postgres, Redis, Langfuse worker | — | The NAS itself only |
 
 Portainer lists ports like `5432:5432` without showing that they are bound to the NAS's own
 loopback address. They are not open to the network.
 
-**Basic Memory has no login at all.** Keep it on the LAN. Never route it through the
-Cloudflare tunnel without Cloudflare Access in front of it.
+**Hindsight's REST API has no login either.** Its MCP endpoint wants `HINDSIGHT_MCP_TOKEN` as a
+bearer token, but the rest of port 8888 does not, so keep it on the LAN too.
 
 **MinIO's 9090 has to stay on the LAN**, because your browser uploads Langfuse media straight
 to it. That is why the media addresses point at `truenas.local` and not `localhost`.
@@ -90,10 +90,10 @@ Mac's own settings, see [Use a fixed address](#use-a-fixed-address).
 
 ## Use a fixed address
 
-`.local` names resolve over mDNS, which stalls for 2-4 s now and then. Every Basic Memory and
+`.local` names resolve over mDNS, which stalls for 2-4 s now and then. Every Hindsight and
 Langfuse call pays for that. Measured by name, calls spiked to 2-4 s; by IP, 0.24 s at most.
 
-Only the Mac's `BASIC_MEMORY_URL` and `LANGFUSE_HOST` matter for speed. Set them to the
+Only the Mac's `NAS_URL` and `LANGFUSE_HOST` matter for speed. Set them to the
 NAS's fixed IP or a router DNS name in your own `.env`, never in the repo. `./install.sh`
 and `./install.sh --check` warn about any `.local` address. `NEXTAUTH_URL`, the S3
 endpoints are only used by the browser, so they can stay as they are.
@@ -107,8 +107,7 @@ empty password.
 
 The Cloudflare tunnel is optional. It only starts when `CLOUDFLARE_TUNNEL_TOKEN` is set.
 
-One more setting is optional. `BASIC_MEMORY_DEFAULT_PROJECT` names the Basic Memory project made the default at each start;
-without it, Basic Memory keeps the default it already has. Langfuse telemetry is off.
+Langfuse telemetry is off.
 
 Generate them as hex, not base64. The Postgres password ends up inside a web address, and
 base64's `+`, `/` and `=` would break it.
@@ -144,104 +143,57 @@ Next.js inside the container listens on whatever `HOSTNAME` says, and Docker set
 container's ID. The compose file forces `HOSTNAME: "0.0.0.0"`; without it, port 3000 never
 answers.
 
-## Basic Memory
+## Hindsight
 
-The notes are plain markdown in `kb/`, beside the compose file. Every top-level folder in
-`kb/` is one Basic Memory project: today `aletheia` and `homelab`, and `system` joins them once the server
-restarts. Basic Memory
-registers each folder as a project every time it starts, so a new project is a new folder
-and a restart:
+Hindsight is long-term memory: agents retain what happened and recall it later. It runs as
+`hindsight` beside its own Postgres with pgvector, `hindsight-db`, so Langfuse's database is
+untouched. Embeddings run inside the container; only fact extraction calls a model, and it
+does so through the `claude` CLI on your Claude subscription, with no API key, using a token
+from `claude setup-token`. `HINDSIGHT_LLM_MODEL` is optional and defaults to `claude-haiku-4-5`.
+
+Setting `DEEPSEEK_API_KEY` adds DeepSeek (`deepseek-v4-flash`) as a second model: when a call to
+Claude fails after its retries, Hindsight tries DeepSeek. Without it, nothing changes.
+
+Setting `HINDSIGHT_LANGFUSE_AUTH` (base64 of a Langfuse project's `public:secret` key pair) sends
+Hindsight's own traces to Langfuse under the environment `hindsight`: retain, recall,
+consolidation, and each model call with its tokens. They are not linked to the Claude Code
+session that called Hindsight.
+
+The audit log keeps every recall (the query and the memories returned) and retain (the content
+sent) in the `audit_log` table of `hindsight-db`, forever. Read-only tools such as
+`list_memories` are not logged. For example, the last 20 calls:
 
 ```sh
-mkdir kb/newproject
-sudo docker restart basic-memory
+sudo docker exec hindsight-db psql -U hindsight -c \
+  "select action, started_at, request->>'query' as query from audit_log order by started_at desc limit 20"
 ```
 
-The search index is SQLite, kept in the `basic_memory_home` volume instead, because SQLite on
-an SMB share corrupts. The index can be rebuilt from the markdown.
+One-time setup:
 
-`kb/` must be writable by uid 1000, or Basic Memory starts and then quietly stops serving:
+1. On the Mac, or any machine logged in to the subscription, run `claude setup-token`.
+2. Put the token in the NAS `.env` as `CLAUDE_CODE_OAUTH_TOKEN`.
+3. Run `sudo docker compose up -d`.
 
-```sh
-sudo chown -R 1000:1000 kb
-```
+The token lasts about a year; renew it yearly by repeating steps 1 and 2.
 
-### How notes are organised
+`HINDSIGHT_DB_PASSWORD`, `HINDSIGHT_MCP_TOKEN` and `CLAUDE_CODE_OAUTH_TOKEN` are required. Put the same token in the Mac's `.env` as `HINDSIGHT_MCP_TOKEN`,
+and `install.sh` registers the `hindsight` MCP server. All projects share one bank, `cardea`.
 
-Every project has the same four folders. One question picks the folder:
+Fact extraction counts against the subscription's usage limits. Upstream supports this
+provider on linux/amd64 only and calls it unsuitable for shared or production deployments.
 
-| Folder | Holds | Ask |
-|---|---|---|
-| `apps/<app>/<area>/` | Lasting knowledge about each thing the project builds or runs: decisions, constraints, gotchas, how it works. | Is it about something the project builds or runs? |
-| `research/<topic>/` | What was learnt from outside: other apps, source sites, platforms, design frameworks. | Did someone else make it? |
-| `plans/<plan>/` | Work in flight: a feature, a migration. Spec, plan, open questions. | Is it work in flight? |
-| `archive/<topic>/` | Finished plans and superseded pages, kept for their reasoning. | Is it done or replaced? |
+## The vault
 
-The homelab project uses `apps/nas/`, `apps/network/` and `apps/mac/` for what it runs. Every
-folder has a portal page naming its parent, the project front page links every top-level
-portal, and portal titles are unique across the vault because Obsidian resolves links by file
-name.
-
-A vault-root `system/` folder holds the rules that apply to every project (How Notes Are
-Written and the vault-wide decisions) and the six templates in `system/templates/`. It becomes
-a Basic Memory project only after the Basic Memory server restarts. Links from project pages
-into `system/` resolve in Obsidian only. An ignore file keeps `system/templates/` out of Basic
-Memory's index, because Basic Memory stamps a `permalink` (and a missing `title`) into every
-markdown file it indexes, and Obsidian's Templates plugin, which points at
-`system/templates`, would copy those into new notes. The exact placement of the ignore file
-(`.bmignore` or `.gitignore`) is unverified until after the restart; if the templates get
-stamped anyway, the fallback is moving them to a dot-folder such as `kb/.templates/` and
-repointing the Templates plugin. The `basic-memory` skill
-mirrors the rules and templates for vaults without `system/`; where `system/` exists, it wins.
-
-What kind of note it is goes in its properties, not its folder, so Obsidian can list every
-decision or gotcha across all projects. Each kind (decision, reference, gotcha, constraint,
-plan and area) has its own template, and every note reads as a wiki page: a title, a
-`Part of` link to its area, a short lead and the body. The lines Basic Memory indexes sit at
-the bottom, below a rule:
-
-```markdown
----
-type: decision
-status: accepted
-tags: [database]
-aliases: []
-updated: 2026-10-28
----
-# Use GRDB for Offline Storage
-
-Part of [[Database]]
-
-The app keeps its library in SQLite through GRDB, so it works fully offline.
-
-## Context
-...
-
----
-# Basic Memory
-
-## Key facts
-- [decision] GRDB for the local database
-- [rule] Offline storage goes through GRDB, never raw SQLite calls
-- [fact] The offline store is a single GRDB database file on device
-
-## Relations
-- part_of [[Database]]
-```
-
-A note like that one lives at `aletheia/apps/ios/database/Use GRDB for Offline Storage.md`.
-Basic Memory indexes the key facts and relations, links in the prose become `links_to`, and
-all of them draw Obsidian's graph. Every folder has a portal page naming its parent, and
-each project's front page links every top-level portal. The `basic-memory` skill in the Cardea plugin has
-all six templates and the rules agents follow.
-
-In Obsidian, a CSS snippet hides the `title` and `permalink` properties, the inline title is
-off, and the Automatic Table of Contents plugin renders the `toc` code blocks.
+The notes are plain Obsidian markdown on the NAS, at `/Volumes/NAS/Vault` on the Mac. No
+server watches the folder: you read it in Obsidian, and agents edit the same files directly.
+Each project is one title-cased folder (`Aletheia/`, `Homelab/`, `System/`). How pages are
+laid out and written is in the `obsidian` skill. Durable decisions and preferences go to
+Hindsight instead.
 
 ## Backups
 
 None. Langfuse has no high availability either. What matters is the
-`langfuse_postgres_data` and `langfuse_clickhouse_data` volumes, plus `kb/`.
+`langfuse_postgres_data` and `langfuse_clickhouse_data` volumes.
 
 ## Pins
 

@@ -1,22 +1,15 @@
 #!/bin/sh
 # the plugin's hooks, fed sample hook input: secrets and bad commit messages are denied, the
-# rest pass silently, the web and handoff nudges show once per session, and the session note survives an
-# unreachable basic memory. tests/fakes/nas.py stands in for basic memory. needs python3, git.
+# rest pass silently, the web and handoff nudges show once per session, and the session note renders. needs python3, git.
 set -eu
 cd "$(dirname "$0")/.."
 HOOK=plugins/cardea/hooks/hook.py
-PORT=8767
 
 fail() { echo "FAIL: $*" >&2; [ -z "${out:-}" ] || echo "--- output: $out" >&2; exit 1; }
-for t in python3 git curl; do command -v "$t" >/dev/null || fail "$t is not installed"; done
+for t in python3 git; do command -v "$t" >/dev/null || fail "$t is not installed"; done
 
 work=$(mktemp -d)
-python3 tests/fakes/nas.py "$PORT" & nas=$!
-trap 'kill "$nas" 2>/dev/null || true; wait "$nas" 2>/dev/null || true; rm -rf "$work"' EXIT
-tries=0
-until curl -s -o /dev/null "http://127.0.0.1:$PORT/api/public/health"; do
-  tries=$((tries + 1)); [ "$tries" -lt 50 ] || fail "the fake NAS did not start"; sleep 0.1
-done
+trap 'rm -rf "$work"' EXIT
 
 # run <hook> <stdin json>: the hook's stdout lands in $out; a non-zero exit fails the test.
 run() { out=$(printf '%s' "$2" | env HOME="$work/home" CLAUDE_PLUGIN_DATA="$work/data" python3 -I "$HOOK" "$1") || fail "$1 exited non-zero"; }
@@ -74,7 +67,7 @@ done
 ballowed "$(tool s Read file_path /repo/src/App.tsx)"
 ballowed "$(tool s Edit file_path /repo/src/build.ts)"
 ballowed "$(tool s WebFetch url https://example.com)"
-ballowed "$(tool s mcp__basic-memory__search_notes query x)"
+ballowed "$(tool s mcp__hindsight__recall query x)"
 for c in 'pnpm build' 'git status' 'ls src' 'grep -r TODO src'; do ballowed "$(tool s Bash command "$c")"; done
 
 # commit: the user's one-line format, inline messages only.
@@ -159,26 +152,19 @@ run handoff "$(prompt h1)"; says 'handoff skill'; says 'past 195k tokens'
 allowed handoff "$(prompt h1)"
 allowed handoff '{"session_id": "h2", "prompt": "hi"}'
 
-# session: a repo with a project and graphify-out, a worktree of it, one without a project,
-# then basic memory unreachable and not configured.
+# session: a repo with graphify-out, a worktree of it, one without graphify-out.
 mkdir -p "$work/home" "$work/Demo/graphify-out" "$work/Other"
 for r in Demo Other; do git -C "$work/$r" init -q; done
 git -C "$work/Demo" -c user.name=t -c user.email=t@example.com commit -q --allow-empty -m 'chore: init'
 git -C "$work/Demo" worktree add -q "$work/demo-wt" 2>/dev/null
-cfg() { printf '{"mcpServers": {"basic-memory": {"type": "http", "url": "%s"}}}' "$1" > "$work/home/.claude.json"; }
 session() { out=$(printf '{"source": "startup"}' | env -u HERDR_ENV HOME="$work/home" CLAUDE_PROJECT_DIR="$1" ${HERDR:+HERDR_ENV=1} python3 -I "$HOOK" session) || fail "session exited non-zero"; }
-cfg "http://127.0.0.1:$PORT/mcp"
 session "$work/Demo"
-says 'project for this repo: \"demo\"'; says 'graphify-out/ exists'; says 'Use CRDTs for sync'; says 'retrieval-order skill'; says 'one search_notes, then read only the best hit'
+says 'graphify-out/ exists'; says 'retrieval-order skill'; says 'Hindsight'; says '/cardea:remember'
 [ "$(python3 -c 'import json,sys; print(len(json.loads(sys.argv[1])["hookSpecificOutput"]["additionalContext"].splitlines()))' "$out")" -le 15 ] || fail "the session note is over 15 lines"
 session "$work/Demo"; case "$out" in *'load the cardea:herdr skill'*) fail "the herdr line appeared outside herdr";; esac
 HERDR=1 session "$work/Demo"; HERDR= ; says 'load the cardea:herdr skill'
-session "$work/demo-wt"; says 'project for this repo: \"demo\"'
-session "$work/Other"; says 'no project \"other\"'; says 'No graphify-out/'
-cfg http://127.0.0.1:1/mcp
-session "$work/Demo"; says 'unreachable'; says 'project for this repo: \"demo\"'
-rm "$work/home/.claude.json"
-session "$work/Demo"; says "isn't configured"
+session "$work/demo-wt"; says 'Hindsight'
+session "$work/Other"; says 'No graphify-out/'
 
 # every hook fails open on input it can't read.
 # the blind hook's command exits in the shell, before python starts, unless CARDEA_BLIND=1.

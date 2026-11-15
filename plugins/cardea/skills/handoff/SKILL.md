@@ -19,13 +19,14 @@ Always propose and wait for a yes; never hand off on your own. Outside herdr
 (`HERDR_ENV` is not `1`), write the summary in chat instead and tell the user to start a new
 session with it.
 
-Before handing off, file anything durable as usual: decisions in Basic Memory or the project's
-decisions page. The summary carries the session, not the long-term record.
+Before handing off, save anything durable as usual: decisions to Hindsight (`/cardea:remember`)
+or the project's decisions page. The summary carries the session, not the long-term record.
 
 ## 1. Write the summary
 
 Leave nothing out: the new session knows only what this says. Formal and plain, no persona.
-Write it to a file in the scratchpad (or `/tmp`), in this order:
+Write it as a plan file under `/tmp`, with a TODO section near the top (checkboxes, kept
+current), and pass it to the new session by path. Use this order:
 
 1. **Opening line, verbatim:** `You are taking over from a previous session that is closing.
    Read everything below. Create one task in your task list for each To do item, then reply

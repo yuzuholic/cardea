@@ -25,10 +25,10 @@ stand-in tools where the real ones would install things.
 
 Runs `install.sh` from start to finish against stand-ins: fake `brew`, `claude` and `herdr`
 that only record how they were called (in `tests/fakes/`), and a small fake NAS
-that answers for Basic Memory and Langfuse. It drives the prompts through a real terminal
+that answers for Langfuse and Hindsight. It drives the prompts through a real terminal
 and checks what the run did, not just what it printed:
 
-- A bare address like `127.0.0.1` gets Basic Memory's port and path, and Langfuse defaults to
+- A bare address like `127.0.0.1` is the NAS address, and Langfuse defaults to
   the same machine.
 - A wrong address can be retried, replaced, skipped, or left with Ctrl-D (Esc with gum),
   without the prompt looping forever.
@@ -58,11 +58,10 @@ Feeds the plugin's hooks the same input Claude Code would send. It checks that s
 badly formed commit messages are blocked, that commits mentioning an AI tool or company are
 asked about rather than blocked, that everything else passes quietly, that the web reminder
 shows once per session, that the handoff reminder shows once and only past its token
-threshold, and that the session note still works when Basic Memory is unreachable. With
+threshold, and that the session note names the lookup order and Hindsight. With
 `CARDEA_BLIND=1` set, it checks that reads of the blocked paths, URLs and build folders, capture
 commands and browser or screenshot MCP tools are denied, and that everything else, and every
 call without the variable, passes quietly.
-A small fake NAS stands in for Basic Memory.
 
 ## Vendored skills
 

@@ -253,7 +253,7 @@ fi
 cd "$REPO_DIR"
 ENV_FILE="$REPO_DIR/.env"
 # the user-scope MCP servers cardea owns; anything else in claude code is left alone.
-MCP_NAMES='xcodebuild|swiftlens|xcode|basic-memory'; MCP_LIST=
+MCP_NAMES='xcodebuild|swiftlens|xcode|hindsight'; MCP_LIST=
 
 # --- probes ----------------------------------------------------------------
 # any http status at all means something answered. an MCP endpoint may well reply
@@ -304,6 +304,13 @@ load_env() {
     case "$l_key" in *[!A-Z0-9_]*) continue ;; esac
     export "$l_key=${l_line#*=}"
   done < "$ENV_FILE"
+}
+
+# NAS_BASE is NAS_URL without any port or path. shortcut: a .env that still has only
+# BASIC_MEMORY_URL gets its NAS_URL from it; drop this fallback one release after it ships.
+derive_nas() {
+  [ -n "${NAS_URL:-}" ] || NAS_URL=$(printf '%s' "${BASIC_MEMORY_URL:-}" | sed -n 's|^\([a-z]*://[^/:]*\).*|\1|p')
+  NAS_BASE=$(printf '%s' "${NAS_URL:-}" | sed -n 's|^\([a-z]*://[^/:]*\).*|\1|p')
 }
 
 # langfuse publishes a health endpoint; use it rather than guessing from the homepage.
@@ -379,10 +386,11 @@ run_checks() {
 
   step "services"
   load_env
-  probe_mcp      "${BASIC_MEMORY_URL:-}" "basic memory"
-  probe_langfuse "${LANGFUSE_HOST:-}"    "langfuse"
-  warn_mdns "${BASIC_MEMORY_URL:-}" "basic memory"
-  warn_mdns "${LANGFUSE_HOST:-}"    "langfuse"
+  derive_nas
+  probe_http     "${NAS_URL:-}"       "nas"
+  probe_langfuse "${LANGFUSE_HOST:-}" "langfuse"
+  warn_mdns "${NAS_URL:-}"       "nas"
+  warn_mdns "${LANGFUSE_HOST:-}" "langfuse"
 
   if command -v claude >/dev/null 2>&1; then
     step "claude code mcp servers"
@@ -447,8 +455,8 @@ command -v claude >/dev/null 2>&1 || die "claude code is not installed — the B
 ok "claude $(claude --version 2>/dev/null | cut -d' ' -f1)"
 
 # the task tools (TaskCreate, TaskList, TaskUpdate) are off by default on newer models, and the
-# read-only Basic Memory tools should not wait on a permission prompt. claude has no command to set
-# either, so merge them in; an unreadable file is left alone. write tools stay unlisted.
+# Hindsight's delete_document should not wait on a permission prompt. claude has no command to set
+# either, so merge them in; an unreadable file is left alone.
 if python3 -c '
 import json, os, sys
 p = sys.argv[1]
@@ -456,15 +464,14 @@ d = json.load(open(p)) if os.path.exists(p) else {}
 env = d.setdefault("env", {})
 env["CLAUDE_CODE_ENABLE_TODO_TOOLS"] = "1"
 allow = d.setdefault("permissions", {}).setdefault("allow", [])
-for t in ("search_notes", "read_note", "build_context", "recent_activity", "list_directory", "list_memory_projects"):
-    if "mcp__basic-memory__" + t not in allow:
-        allow.append("mcp__basic-memory__" + t)
+if "mcp__hindsight__delete_document" not in allow:
+    allow.append("mcp__hindsight__delete_document")
 os.makedirs(os.path.dirname(p), exist_ok=True)
 json.dump(d, open(p, "w"), indent=2)
 ' "$HOME/.claude/settings.json" 2>/dev/null; then
-  ok "task list on (CLAUDE_CODE_ENABLE_TODO_TOOLS), basic memory reads allowed"
+  ok "task list on (CLAUDE_CODE_ENABLE_TODO_TOOLS), hindsight delete_document allowed"
 else
-  warn "could not edit ~/.claude/settings.json — add CLAUDE_CODE_ENABLE_TODO_TOOLS to \"env\" and the basic memory read tools to \"permissions.allow\" by hand"
+  warn "could not edit ~/.claude/settings.json — add CLAUDE_CODE_ENABLE_TODO_TOOLS to \"env\" and mcp__hindsight__delete_document to \"permissions.allow\" by hand"
 fi
 
 # herdr writes its hook into the same settings.json the plugin installs write to, so it goes
@@ -535,6 +542,7 @@ PLUGINS
 step "configuration"
 if [ -f "$ENV_FILE" ]; then
   load_env
+  derive_nas
   info "editing existing .env — press enter to keep a value"
 elif [ -z "$PROMPT" ]; then
   cp "$REPO_DIR/.env.example" "$ENV_FILE"
@@ -661,9 +669,9 @@ ask_url() {
 }
 
 if [ -n "$PROMPT" ]; then printf '\n'; fi
-ask_url BASIC_MEMORY_URL "basic memory MCP url " "http://truenas.local:8766/mcp" probe_mcp
-# everything runs on the one NAS, so offer whatever host basic memory was given.
-NAS_BASE=$(printf '%s' "$BASIC_MEMORY_URL" | sed -n 's|^\([a-z]*://[^/:]*\).*|\1|p')
+ask_url NAS_URL "nas url              " "http://truenas.local" probe_http
+# everything runs on the one NAS, so offer its host to the other services.
+derive_nas
 ask_url LANGFUSE_HOST    "langfuse url         " "${NAS_BASE:-http://truenas.local}:3000" probe_langfuse
 ask_secret LANGFUSE_PUBLIC_KEY "langfuse public key  "
 ask_secret LANGFUSE_SECRET_KEY "langfuse secret key  "
@@ -672,8 +680,10 @@ ask_secret LANGFUSE_SECRET_KEY "langfuse secret key  "
 TMP_ENV="$ENV_FILE.$$"
 {
   printf '# cardea — written by install.sh on %s. not committed.\n\n' "$STAMP"
-  printf '# --- basic memory (NAS) ---\n'
-  printf 'BASIC_MEMORY_URL=%s\n\n' "$BASIC_MEMORY_URL"
+  printf '# --- nas ---\n'
+  printf 'NAS_URL=%s\n\n' "$NAS_URL"
+  printf '# --- hindsight (NAS) ---\n'
+  printf 'HINDSIGHT_MCP_TOKEN=%s\n\n' "${HINDSIGHT_MCP_TOKEN:-}"
   printf '# --- langfuse (NAS) ---\n'
   printf 'LANGFUSE_HOST=%s\n'          "$LANGFUSE_HOST"
   printf 'LANGFUSE_PUBLIC_KEY=%s\n'    "$LANGFUSE_PUBLIC_KEY"
@@ -717,25 +727,26 @@ mcp_json() {
     swiftlens)     echo '{"type":"stdio","command":"uvx","args":["swiftlens@0.2.14"]}' ;;
     # a bare `xcrun mcpbridge` is the bridge; it only connects while xcode is running.
     xcode)         echo '{"type":"stdio","command":"xcrun","args":["mcpbridge"]}' ;;
-    basic-memory)  printf '{"type":"http","url":"%s"}\n' "$BASIC_MEMORY_URL" ;;
+    # one bank for every project; the bearer token sits in the registered command, as keys do elsewhere.
+    hindsight)     printf '{"type":"http","url":"%s:8888/mcp/cardea/","headers":{"Authorization":"Bearer %s"}}\n' "$NAS_BASE" "$HINDSIGHT_MCP_TOKEN" ;;
   esac
 }
 mcp() {
   claude mcp remove -s user "$1" >/dev/null 2>&1 || true
   claude mcp add-json -s user "$1" "$(mcp_json "$1")" >/dev/null && echo "mcp: $1" || { echo "mcp: $1 — could not register"; return 1; }
 }
-# the servers this run registers; basic memory only with a url.
-mcp_wanted() { echo "xcodebuild swiftlens xcode${BASIC_MEMORY_URL:+ basic-memory}"; }
+# the servers this run registers; hindsight only with a token and a NAS host.
+mcp_wanted() { echo "xcodebuild swiftlens xcode${HINDSIGHT_MCP_TOKEN:+${NAS_BASE:+ hindsight}}"; }
 job_mcp() {
   j_ok=0
   for j_name in xcodebuild swiftlens xcode; do
     mcp "$j_name" || j_ok=1
   done
-  if [ -n "$BASIC_MEMORY_URL" ]; then
-    mcp basic-memory || j_ok=1
+  if [ -n "${HINDSIGHT_MCP_TOKEN:-}" ] && [ -n "$NAS_BASE" ]; then
+    mcp hindsight || j_ok=1
   else
-    claude mcp remove -s user basic-memory >/dev/null 2>&1 || true
-    echo "mcp: basic-memory — no url in .env, skipped"
+    claude mcp remove -s user hindsight >/dev/null 2>&1 || true
+    echo "mcp: hindsight — no token in .env, skipped"
   fi
   return "$j_ok"
 }

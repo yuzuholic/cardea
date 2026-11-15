@@ -39,13 +39,13 @@ function New-Stubs($Dir) {
     New-Stub $Dir 'claude' @(
         '@echo off',
         'if "%1 %2 %3"=="plugin list --json" (echo [{"id": "superpowers@superpowers-marketplace"}] & exit /b 0)',
-        'if "%1 %2"=="mcp list" (echo basic-memory: http - Connected & exit /b 0)',
+        'if "%1 %2"=="mcp list" (echo hindsight: http - Connected & exit /b 0)',
         'echo claude %* >> "%FAKE_LOG%"'
     ) @(
         '#!/bin/sh',
         'case "$*" in',
         '  "plugin list --json") echo ''[{"id": "superpowers@superpowers-marketplace"}]''; exit 0 ;;',
-        '  "mcp list") echo "basic-memory: http - Connected"; exit 0 ;;',
+        '  "mcp list") echo "hindsight: http - Connected"; exit 0 ;;',
         'esac',
         'echo "claude $*" >> "$FAKE_LOG"'
     )
@@ -171,7 +171,7 @@ try {
     $pathWithoutUv = ($env:PATH -split [regex]::Escape($sep) | Where-Object { $realUv -notcontains $_ }) -join $sep
     $path = "$prefix$sep$($env:PATH)"
     $env:PATH = $path
-    $env:BASIC_MEMORY_URL = 'http://127.0.0.1:8766/mcp'
+    $env:NAS_URL = 'http://127.0.0.1:8766'
     Remove-Item Env:CARDEA_ASSUME_NO_SYMLINK -ErrorAction SilentlyContinue
 
     Initialize-Case 'install'
@@ -181,7 +181,6 @@ try {
     Assert-Linked '.claude/skills/baby' 'claude/skills/baby'
     $settings = Get-Content -Raw (Join-Path $Home_ '.claude/settings.json') | ConvertFrom-Json
     Assert ($settings.env.CLAUDE_CODE_ENABLE_TODO_TOOLS -eq '1') 'the task list was not turned on in settings.json'
-    Assert-Called 'mcp add -s user --transport http basic-memory http://127.0.0.1:8766/mcp'
     Assert-Called "plugin install cardea --marketplace $Repo -y"
     Assert-Called 'plugin update superpowers@superpowers-marketplace'
 

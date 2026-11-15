@@ -1,4 +1,4 @@
-# lab stack: basic memory, langfuse with its storage, and the optional
+# lab stack: hindsight, langfuse with its storage, and the optional
 # cloudflare tunnel. baked into the yuzuholic/cardea launcher image; on the NAS, run it
 # through ../compose.yml.
 #
@@ -8,8 +8,7 @@
 # values come from the launcher's environment (declared in ../compose.yml), or from a .env
 # beside this file when run directly. each secret is required (${VAR:?}), so a missing one
 # stops compose instead of starting a service with an empty password. values that must
-# match another, like DATABASE_URL, default to it. CARDEA_KB is the host path of kb/; the
-# launcher sets it, and ./kb is the fallback.
+# match another, like DATABASE_URL, default to it.
 
 services:
   # optional: only runs with the tunnel profile, which the launcher turns on when a token
@@ -22,47 +21,60 @@ services:
     restart: unless-stopped
     depends_on:
       - langfuse-web
-      - basic-memory
 
-  # basic memory: the agents' notes. the sqlite index lives in a named volume because
-  # sqlite corrupts on an SMB/NFS share; the markdown in kb/ is fine there. kb/ must be
-  # writable by BASIC_MEMORY_USER (default 1000:1000, appuser), or the server starts and
-  # then stops serving.
+  # hindsight: long-term memory for the agents. it keeps its own postgres (with pgvector),
+  # apart from langfuse's. embeddings run locally; only the fact extraction calls the
+  # claude cli, on the claude subscription through a `claude setup-token` token (CLAUDE_CODE_OAUTH_TOKEN).
+  # its traces go to langfuse when HINDSIGHT_LANGFUSE_AUTH is set.
   #
-  # every top-level folder in kb/ is a project, registered at each start, so a new project
-  # is just a new folder and a restart. adding a registered project again is a no-op.
-  #
-  # no auth on these endpoints. keep 8766 on the LAN; never route it through the tunnel
-  # without cloudflare access in front of it.
-  basic-memory:
-    image: ghcr.io/basicmachines-co/basic-memory:0.24.1
-    container_name: basic-memory
-    user: "${BASIC_MEMORY_USER:-1000:1000}"
+  # the REST api has no login; the MCP endpoint takes HINDSIGHT_MCP_TOKEN as a bearer token.
+  # keep 8888 on the LAN, and the control plane (9999) on the NAS itself.
+  hindsight-db:
+    image: pgvector/pgvector:pg17
+    container_name: hindsight-db
     restart: unless-stopped
-    command:
-      - sh
-      - -c
-      - |
-        for p in /app/kb/*/; do
-          [ -d "$$p" ] || continue
-          basic-memory project add "$$(basename "$$p")" "$$p" || exit 1
-        done
-        [ -z "$${BASIC_MEMORY_DEFAULT_PROJECT:-}" ] || basic-memory project default "$$BASIC_MEMORY_DEFAULT_PROJECT"
-        exec basic-memory mcp --transport streamable-http --host 0.0.0.0 --port 8000
-    ports:
-      - "8766:8000"
     environment:
-      # projects may only live under kb/; the image's default root is its own scratch space.
-      BASIC_MEMORY_PROJECT_ROOT: /app/kb
-      BASIC_MEMORY_DEFAULT_PROJECT: ${BASIC_MEMORY_DEFAULT_PROJECT:-}
-      # a uid missing from the image's passwd would get HOME=/, outside the volume below.
-      HOME: /home/appuser
+      POSTGRES_USER: hindsight
+      POSTGRES_PASSWORD: ${HINDSIGHT_DB_PASSWORD:?set HINDSIGHT_DB_PASSWORD in .env}
+      POSTGRES_DB: hindsight
     volumes:
-      - ${CARDEA_KB:-./kb}:/app/kb
-      # the whole home, not ~/.basic-memory: the image has no such folder, so a fresh volume
-      # there would be root-owned and unwritable. home exists, owned by appuser; with another
-      # BASIC_MEMORY_USER, chown the volume to it first.
-      - basic_memory_home:/home/appuser
+      - hindsight_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hindsight"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  hindsight:
+    image: ghcr.io/vectorize-io/hindsight:1.2.1
+    container_name: hindsight
+    restart: unless-stopped
+    # upstream's grace period: it finishes in-flight retains before exiting.
+    stop_grace_period: 75s
+    depends_on:
+      hindsight-db:
+        condition: service_healthy
+    ports:
+      - "8888:8888"
+      - 127.0.0.1:9999:9999
+    environment:
+      HINDSIGHT_API_DATABASE_URL: postgresql://hindsight:${HINDSIGHT_DB_PASSWORD:?set HINDSIGHT_DB_PASSWORD in .env}@hindsight-db:5432/hindsight
+      HINDSIGHT_API_LLM_PROVIDER: claude-code
+      HINDSIGHT_API_LLM_MODEL: ${HINDSIGHT_LLM_MODEL:-claude-haiku-4-5}
+      # deepseek takes over when claude fails; hindsight ignores these empty values without a key.
+      HINDSIGHT_API_LLM_STRATEGY: ${DEEPSEEK_API_KEY:+{"mode":"failover"}}
+      HINDSIGHT_API_LLM_1_PROVIDER: ${DEEPSEEK_API_KEY:+deepseek}
+      HINDSIGHT_API_LLM_1_MODEL: ${DEEPSEEK_API_KEY:+deepseek-v4-flash}
+      HINDSIGHT_API_LLM_1_API_KEY: ${DEEPSEEK_API_KEY:-}
+      HINDSIGHT_API_MCP_AUTH_TOKEN: ${HINDSIGHT_MCP_TOKEN:?set HINDSIGHT_MCP_TOKEN in .env}
+      HINDSIGHT_API_LLM_API_KEY: ${CLAUDE_CODE_OAUTH_TOKEN:?set CLAUDE_CODE_OAUTH_TOKEN in .env}
+      # every recall and retain is kept in audit_log, with its request and response, for querying reads and writes over time.
+      HINDSIGHT_API_AUDIT_LOG_ENABLED: "true"
+      HINDSIGHT_API_OTEL_TRACES_ENABLED: ${HINDSIGHT_LANGFUSE_AUTH:+true}
+      HINDSIGHT_API_OTEL_EXPORTER_OTLP_ENDPOINT: http://langfuse-web:3000/api/public/otel
+      HINDSIGHT_API_OTEL_EXPORTER_OTLP_HEADERS: Authorization=Basic ${HINDSIGHT_LANGFUSE_AUTH:-}
+      HINDSIGHT_API_OTEL_SERVICE_NAME: hindsight
+      HINDSIGHT_API_OTEL_DEPLOYMENT_ENVIRONMENT: hindsight
 
   langfuse-worker:
     image: docker.io/langfuse/langfuse-worker:4.70.0
@@ -224,7 +236,7 @@ services:
       - langfuse_postgres_data:/var/lib/postgresql/data
 
 volumes:
-  basic_memory_home:
+  hindsight_db_data:
     driver: local
   langfuse_postgres_data:
     driver: local

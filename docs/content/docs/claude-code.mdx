@@ -50,7 +50,7 @@ for them, so unlike the rules in `CLAUDE.md` they cost nothing until they are us
 Every skill is listed, with what it does, on [Skills](/docs/skills).
 
 `retrieval-order` sets where an agent looks before it asks: the session, then the rules and
-memory, Basic Memory, the active plan, graphify, the code, git history, tests and
+memory, Hindsight, the active plan, the vault, graphify, the code, git history, tests and
 builds, skills and offline docs, the web, and you last. Notes and history answer why
 something is the way it is; the code and live results answer what it is now, and win when a
 note is out of date.
@@ -85,7 +85,7 @@ ahead. None of them ever approves a call, so your usual permission prompts still
 
 | Hook | When | What it does |
 |---|---|---|
-| Session note | A session starts, resumes or is compacted | Reminds Claude of the lookup order, names the repo's Basic Memory project (the repo's folder name), says whether a graphify map exists, and lists up to five notes from the last week. If the NAS doesn't answer within 1.5 seconds, the notes are left out. |
+| Session note | A session starts, resumes or is compacted | Reminds Claude of the lookup order, points to Hindsight and `/cardea:remember` for memory, and says whether a graphify map exists. |
 | Secrets | Before reading, searching, editing or running a command | Blocks private keys (`id_rsa`, `*.pem`, `*.key`, `*.p12`, `*.p8`). `*.pub` keys are fine, and so are `.env` files: what's in them can be rotated, and production secrets live in GitHub and CI. |
 | Blind mode | Before reading, searching, editing, fetching or running a command, only when `CARDEA_BLIND=1` | Denies reads of the paths in `CARDEA_BLIND_PATHS` and the URLs in `CARDEA_BLIND_URLS`, of `dist/`, `build/`, `.next/` and `storybook-static/`, `playwright-cli`, AXe and `simctl` screenshot commands, and browser or screenshot MCP tools. A deny never prompts you. Only the blind implementer is started with the variables. |
 | Commit message | Before a `git` command | Blocks a commit whose message isn't `<type>: <subject>`: lowercase, no full stop, under 72 characters, no body and no trailers such as `Co-Authored-By`. It lists what's wrong. If the message can't be read, for example because an editor opens, the commit goes ahead. Outside the cardea repo, it also checks the message and the lines being committed for any mention of an AI tool or company, and asks you to approve that one commit when it finds one, listing each file, line and word. Every commit is asked fresh. |
@@ -131,7 +131,7 @@ the rules in `claude/CLAUDE.md`:
 3. It confirms your answer in one line and waits for "next". "Go with yours" accepts the
    recommendation.
 4. At the end it sums up every decision and waits for your go before acting.
-5. Each decision is saved to Basic Memory.
+5. Each decision is saved to Hindsight.
 
 Choices with an obvious default don't get a question; Claude goes ahead and mentions it in
 one line.

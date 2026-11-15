@@ -150,18 +150,29 @@ function Set-Link($Src, $Dest) {
     }
 }
 
-function Get-BasicMemoryUrl {
-    if ($env:BASIC_MEMORY_URL) { return $env:BASIC_MEMORY_URL }
+function Get-EnvValue($Name) {
+    $fromEnv = [Environment]::GetEnvironmentVariable($Name)
+
+    if ($fromEnv) { return $fromEnv }
 
     $envFile = Join-Parts $RepoDir '.env'
 
     if (Test-Path $envFile) {
-        $line = Select-String -Path $envFile -Pattern '^BASIC_MEMORY_URL=(.+)$' | Select-Object -First 1
+        $line = Select-String -Path $envFile -Pattern "^$Name=(.+)$" | Select-Object -First 1
 
         if ($line) { return $line.Matches[0].Groups[1].Value.Trim() }
     }
 
     return $null
+}
+
+# shortcut: a .env that still has only BASIC_MEMORY_URL keeps its NAS host; drop the fallback one release after it ships.
+function Get-NasUrl {
+    $url = Get-EnvValue 'NAS_URL'
+
+    if (-not $url) { $url = Get-EnvValue 'BASIC_MEMORY_URL' }
+
+    return $url
 }
 
 function Register-Mcp($Name, [string[]]$AddArgs) {
@@ -347,7 +358,7 @@ function Invoke-Checks {
 
     if (Get-Command claude -ErrorAction SilentlyContinue) {
         Step 'claude code mcp servers'
-        $servers = & claude mcp list 2>$null | Where-Object { $_ -match '^basic-memory:' }
+        $servers = & claude mcp list 2>$null | Where-Object { $_ -match '^hindsight:' }
 
         if ($servers) { $servers | ForEach-Object { Write-Host "  $_" } } else { Warn 'none registered yet' }
     }
@@ -407,14 +418,17 @@ catch {
 }
 
 Step 'mcp servers'
-$memoryUrl = Get-BasicMemoryUrl
+$nasUrl = Get-NasUrl
 
-if ($memoryUrl) {
-    Register-Mcp 'basic-memory' @('--transport', 'http', 'basic-memory', $memoryUrl)
+# one bank, cardea, for every project.
+$hindsightToken = Get-EnvValue 'HINDSIGHT_MCP_TOKEN'
+
+if ($hindsightToken -and $nasUrl -match '^([a-z]+://[^/:]+)') {
+    Register-Mcp 'hindsight' @('--transport', 'http', 'hindsight', "$($Matches[1]):8888/mcp/cardea/", '--header', "Authorization: Bearer $hindsightToken")
 }
 else {
-    & claude mcp remove -s user basic-memory *> $null
-    Info 'mcp: basic-memory - no url in BASIC_MEMORY_URL or .env, skipped'
+    & claude mcp remove -s user hindsight *> $null
+    Info 'mcp: hindsight - no token in HINDSIGHT_MCP_TOKEN or .env, skipped'
 }
 
 Step 'plugins'

@@ -20,19 +20,23 @@ services:
       REDIS_AUTH: ${REDIS_AUTH:?set REDIS_AUTH in .env}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
 
-      # who basic memory runs as; it must be able to write the notes.
-      BASIC_MEMORY_USER: ${BASIC_MEMORY_USER:-1000:1000}
+      # hindsight
+      HINDSIGHT_DB_PASSWORD: ${HINDSIGHT_DB_PASSWORD:?set HINDSIGHT_DB_PASSWORD in .env}
+      HINDSIGHT_MCP_TOKEN: ${HINDSIGHT_MCP_TOKEN:?set HINDSIGHT_MCP_TOKEN in .env}
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:?set CLAUDE_CODE_OAUTH_TOKEN in .env}
 
       # optional: the cloudflare tunnel only starts when a token is set.
       CLOUDFLARE_TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
 
-      # optional: the basic memory project made the default.
-      BASIC_MEMORY_DEFAULT_PROJECT: ${BASIC_MEMORY_DEFAULT_PROJECT:-}
+      # optional: the model hindsight extracts facts with.
+      HINDSIGHT_LLM_MODEL: ${HINDSIGHT_LLM_MODEL:-claude-haiku-4-5}
+
+      # optional: a deepseek api key; hindsight fails over to deepseek when claude fails.
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+
+      # optional: turns on hindsight's traces to langfuse.
+      HINDSIGHT_LANGFUSE_AUTH: ${HINDSIGHT_LANGFUSE_AUTH:-}
 
     volumes:
       # the launcher drives the host's docker engine; this is root on the NAS.
       - /var/run/docker.sock:/var/run/docker.sock
-
-      # the notes. the launcher only reads where this folder is on the NAS, then mounts it
-      # into basic memory itself.
-      - ./kb:/kb:ro

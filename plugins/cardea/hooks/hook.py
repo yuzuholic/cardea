@@ -8,7 +8,6 @@ import shlex
 import subprocess
 import sys
 import time
-import urllib.request
 
 READERS = {"cat", "less", "more", "head", "tail", "grep", "egrep", "fgrep", "rg", "sed", "awk",
            "gawk", "bat", "source", ".", "nl", "tac", "strings", "xxd", "od", "hexdump", "base64"}
@@ -19,8 +18,6 @@ TYPES = ("feat", "fix", "docs", "style", "refactor", "test", "chore", "perf", "c
 AI_PATTERNS = ("claude", "anthropic", "chatgpt", "openai", "copilot", "cursor", "gemini", "codex",
                "🤖", "claude.ai/code/session_", "noreply@anthropic.com")
 AI_SHOWN = 20
-BM_TIMEOUT = 1.5
-NOTES = 5
 STATE_DAYS = 7
 # shortcut: 65% of the 300k autoCompactWindow in settings.json, ten points before the 75% compaction; derive from settings if they change.
 HANDOFF_TOKENS = 195_000
@@ -51,77 +48,21 @@ def git_project(path):
     return os.path.basename(root).lower()
 
 
-def mcp_call(url, tool, arguments):
-    headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
-
-    def post(body):
-        req = urllib.request.Request(url, json.dumps(body).encode(), headers)
-        with urllib.request.urlopen(req, timeout=BM_TIMEOUT) as r:
-            if r.headers.get("mcp-session-id"):
-                headers["mcp-session-id"] = r.headers["mcp-session-id"]
-            text = r.read().decode()
-        for line in text.splitlines():
-            if line.startswith("data:"):
-                msg = json.loads(line[5:])
-                if msg.get("id") == body.get("id"):
-                    return msg
-        return json.loads(text) if text.strip() else {}
-
-    post({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
-        "protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "cardea-hook", "version": "1"}}})
-    headers["MCP-Protocol-Version"] = "2025-06-18"
-    post({"jsonrpc": "2.0", "method": "notifications/initialized"})
-    return post({"jsonrpc": "2.0", "id": 2, "method": "tools/call",
-                 "params": {"name": tool, "arguments": arguments}})["result"]
-
-
-def recent_notes(project):
-    try:
-        with open(os.path.expanduser("~/.claude.json"), encoding="utf-8") as f:
-            url = json.load(f)["mcpServers"]["basic-memory"]["url"]
-    except Exception:
-        return ["- Basic Memory isn't configured for Claude Code; skip it."]
-    try:
-        result = mcp_call(url, "recent_activity", {"project": project, "timeframe": "7d",
-                                                    "page_size": NOTES, "output_format": "json"})
-    except Exception:
-        return ["- Basic Memory is unreachable (it answers on the LAN only); carry on without it."]
-    text = "".join(c.get("text", "") for c in result.get("content", []))
-    if result.get("isError"):
-        if "not found" in text.lower():
-            return [f'- Basic Memory has no project "{project}" yet; ask the user before creating one.']
-        return ["- Basic Memory returned an error for recent_activity; skip it this session."]
-    rows = (result.get("structuredContent") or {}).get("result")
-    if not isinstance(rows, list):
-        rows = json.loads(text)
-    titles = [r["title"] for r in rows if isinstance(r, dict) and r.get("title")][:NOTES]
-    if not titles:
-        return [f"- No notes changed in {project} in the last 7 days."]
-    return [f"- Notes changed in {project} in the last 7 days:"] + [f"  - {t}" for t in titles]
-
-
 def session(data):
     path = os.environ.get("CLAUDE_PROJECT_DIR") or data.get("cwd") or os.getcwd()
-    project = git_project(path)
     graph = os.path.isdir(os.path.join(path, "graphify-out"))
     lines = [
         "cardea session note:",
         "- Look things up in the order the retrieval-order skill sets: this session, rules and memory, "
-        "Basic Memory, the active plan, graphify, the code, git history, live evidence, "
+        "the vault, the active plan, graphify, the code, git history, live evidence, "
         "skills and docs, then the web, and the user last. Stop at the first source that answers.",
-        "- Basic Memory lookups: one search_notes, then read only the best hit; the recent notes below "
-        "replace recent_activity.",
-        f'- Basic Memory project for this repo: "{project}" (pass it as project).',
+        "- Memory is Hindsight: recall before asking the user; save explicitly with /cardea:remember.",
         "- graphify-out/ exists here: start codebase questions with the graphify skill." if graph
         else "- No graphify-out/ in this project.",
     ]
     if os.environ.get("HERDR_ENV") == "1":
         lines.append("- Inside herdr: load the cardea:herdr skill before opening panes or starting agents.")
 
-    try:
-        lines += recent_notes(project)
-    except Exception:
-        lines.append("- Couldn't read recent Basic Memory notes; skip them.")
     emit("SessionStart", additionalContext="\n".join(lines))
 
 
@@ -474,7 +415,7 @@ def web(data):
         return
 
     emit("PreToolUse", additionalContext=(
-        "cardea: before relying on the web, check Basic Memory, the code and the git history first, "
+        "cardea: before relying on the web, check memory, the vault, the code and the git history first, "
         "as the retrieval-order skill sets out. The web is for current versions, external APIs and "
         "anything new. This reminder shows once per session."))
 

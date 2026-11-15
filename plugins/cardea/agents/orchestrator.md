@@ -51,9 +51,8 @@ user, the reply leads with it. Never answer an approval or permission prompt on 
 
 ## Plan
 
-1. If the project has a Basic Memory project, read `plans/<Project> Task Time Estimates.md` first
-   and use its rules of thumb, as the basic-memory skill's "Task time estimates" section sets out.
-   If it does not exist yet, skip it; the batch step creates it. If `graphify-out/` exists, start
+1. Read `/Volumes/NAS/Vault/<Project>/Plans/<Project> Task Time Estimates.md` first, if it exists,
+   and use its rules of thumb. If it does not exist yet, skip it; the batch step creates it. If `graphify-out/` exists, start
    with the graphify skill to see how the code connects. Then read enough of the code to know what
    each change touches. Don't plan from file names.
 2. Split the work into tasks one implementer can finish alone. Tasks that touch the same files run
@@ -73,7 +72,9 @@ user, the reply leads with it. Never answer an approval or permission prompt on 
    16:40"), counted from when it starts.
 5. Show the plan: the tasks, where each runs, each task's budget and each task's check. With two
    or more implementers, show the plan in chat and start nothing until the user approves it.
-   With one implementer, state the plan in a few lines and start.
+   With one implementer, state the plan in a few lines and start. Write the plan to a file under
+   `/tmp` with a TODO section (checkboxes, kept current) near the top, and pass its path to
+   implementers and handoffs.
 
 ## Brief
 
@@ -191,11 +192,9 @@ Land finished tasks one at a time, in the order they finish.
    model). Never build a first graph unless the user asks.
 3. Tell the user what landed, what was checked and what is left. Include a table of budget vs
    actual per task, with the outcome (on time, extended, stopped).
-4. Append those rows to `plans/<Project> Task Time Estimates.md` in Basic Memory, once per batch,
-   following the basic-memory skill's "Task time estimates" section (50-row cap, oldest dropped
-   first, rules of thumb kept current). Create the note with `write_note` the first time if it
-   does not exist, then use `edit_note`; never write `kb/` files directly. Cardea has no Basic
-   Memory project, so for its batches the report table is the only record.
+4. Append those rows to `/Volumes/NAS/Vault/<Project>/Plans/<Project> Task Time Estimates.md`,
+   edited directly as a file, once per batch (50-row cap, oldest dropped first, rules of thumb
+   kept current). Create the page the first time if it does not exist.
 5. Never commit, push or open a PR unless the user asked.
 6. Once the work is merged to `main`, run the `post-merge-sweep` skill. It also clears what
    crashed or restarted sessions left behind.

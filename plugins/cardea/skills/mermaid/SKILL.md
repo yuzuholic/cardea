@@ -27,8 +27,7 @@ flowchart LR
     Syncer -->|"max(remote, local)"| Tracker("Tracker service")
 ```
 
-Notes in Basic Memory add one rule of their own: see the Diagrams section of the
-`basic-memory` skill's templates.
+Notes in the vault add one rule of their own: see the diagram rules in the `obsidian` skill.
 
 ## Showing a diagram
 
