@@ -1,12 +1,11 @@
 ---
 name: obsidian
-description: "How the user reads and edits notes in Obsidian, self-hosted on the NAS. Use when the user mentions Obsidian, the vault, or wants to see or edit notes by hand, or when writing notes that should read well there."
+description: "How the user reads and edits notes in Obsidian on the Mac. Use when the user mentions Obsidian, the vault, or wants to see or edit notes by hand, or when writing notes that should read well there."
 ---
 
 # Obsidian
 
-Obsidian runs on the NAS and streams to the browser at `https://truenas.local:3001` (the
-`obsidian` container in cardea's NAS stack). Its vault is the NAS `kb/` folder, the same
+The user opens the vault in Obsidian on the Mac. The vault is the NAS `kb/` folder, the same
 markdown Basic Memory reads and writes. Edits on either side are the same files; nothing syncs.
 
 ## What this means for you
@@ -30,9 +29,3 @@ markdown Basic Memory reads and writes. Edits on either side are the same files;
   Memory.
 - To point the user at a note, give its title or path inside the vault, for example
   `<project>/apps/<app>/<area>/<Title>.md`.
-
-## Access
-
-LAN only, behind a login (`OBSIDIAN_USER` / `OBSIDIAN_PASSWORD` in the NAS `.env`). The
-certificate is self-signed, so the browser warns once. Anyone past the login is root inside
-that container, so never suggest exposing it through the tunnel.

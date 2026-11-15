@@ -1,5 +1,6 @@
-# lab stack — cloudflare tunnel + the cardea agent services. baked into the
-# yuzuholic/cardea launcher image; on the NAS, run it through ../compose.yml.
+# lab stack: basic memory, langfuse with its storage, and the optional
+# cloudflare tunnel. baked into the yuzuholic/cardea launcher image; on the NAS, run it
+# through ../compose.yml.
 #
 # every image is pinned to an exact version; minio by digest, since chainguard's free
 # tier publishes no version tags.
@@ -23,7 +24,7 @@ services:
       - langfuse-web
       - basic-memory
 
-  # basic memory — the agents' notes. the sqlite index lives in a named volume because
+  # basic memory: the agents' notes. the sqlite index lives in a named volume because
   # sqlite corrupts on an SMB/NFS share; the markdown in kb/ is fine there. kb/ must be
   # writable by BASIC_MEMORY_USER (default 1000:1000, appuser), or the server starts and
   # then stops serving.
@@ -46,13 +47,14 @@ services:
           [ -d "$$p" ] || continue
           basic-memory project add "$$(basename "$$p")" "$$p" || exit 1
         done
-        basic-memory project default aletheia
+        [ -z "$${BASIC_MEMORY_DEFAULT_PROJECT:-}" ] || basic-memory project default "$$BASIC_MEMORY_DEFAULT_PROJECT"
         exec basic-memory mcp --transport streamable-http --host 0.0.0.0 --port 8000
     ports:
       - "8766:8000"
     environment:
       # projects may only live under kb/; the image's default root is its own scratch space.
       BASIC_MEMORY_PROJECT_ROOT: /app/kb
+      BASIC_MEMORY_DEFAULT_PROJECT: ${BASIC_MEMORY_DEFAULT_PROJECT:-}
       # a uid missing from the image's passwd would get HOME=/, outside the volume below.
       HOME: /home/appuser
     volumes:
@@ -61,34 +63,6 @@ services:
       # there would be root-owned and unwritable. home exists, owned by appuser; with another
       # BASIC_MEMORY_USER, chown the volume to it first.
       - basic_memory_home:/home/appuser
-
-  # obsidian — the desktop app streamed to a browser at https://truenas.local:3001. it
-  # edits kb/ in place, the same markdown basic memory reads, so there is nothing to sync.
-  # only https is published: the stream needs a secure context, and its plain-http 3000
-  # would collide with langfuse. the cert is self-signed.
-  #
-  # the web desktop has a terminal with passwordless sudo, so anyone past the login is
-  # root in this container and can rewrite every vault. LAN only; never tunnel it.
-  obsidian:
-    image: lscr.io/linuxserver/obsidian:v1.14.4-ls148
-    container_name: obsidian
-    restart: unless-stopped
-    shm_size: "1gb"
-    ports:
-      - "3001:3001"
-    environment:
-      # must share a group with BASIC_MEMORY_USER that can write kb/, so edits made here stay
-      # writable for basic memory.
-      PUID: ${OBSIDIAN_PUID:-1000}
-      PGID: ${OBSIDIAN_PGID:-1000}
-      TZ: Australia/Sydney
-      # an empty PASSWORD means no login at all, so compose refuses to run without both.
-      CUSTOM_USER: ${OBSIDIAN_USER:?set OBSIDIAN_USER in .env}
-      PASSWORD: ${OBSIDIAN_PASSWORD:?set OBSIDIAN_PASSWORD in .env}
-    volumes:
-      - obsidian_config:/config
-      # open this folder as the vault; its .obsidian/ settings come along with it.
-      - ${CARDEA_KB:-./kb}:/config/vaults/kb
 
   langfuse-worker:
     image: docker.io/langfuse/langfuse-worker:4.70.0
@@ -109,7 +83,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/postgres}
       SALT: ${SALT:?set SALT in .env}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY in .env}
-      TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-true}
+      TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-false}
       LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: ${LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES:-false}
       CLICKHOUSE_MIGRATION_URL: ${CLICKHOUSE_MIGRATION_URL:-clickhouse://clickhouse:9000}
       CLICKHOUSE_URL: ${CLICKHOUSE_URL:-http://clickhouse:8123}
@@ -251,8 +225,6 @@ services:
 
 volumes:
   basic_memory_home:
-    driver: local
-  obsidian_config:
     driver: local
   langfuse_postgres_data:
     driver: local

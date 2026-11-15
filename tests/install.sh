@@ -1,5 +1,5 @@
 #!/bin/sh
-# install.sh end to end, against stand-ins: brew, claude, herdr and plannotator in
+# install.sh end to end, against stand-ins: brew, claude and herdr in
 # tests/fakes log their arguments instead of installing anything, and tests/fakes/nas.py
 # answers for basic memory and langfuse on 127.0.0.1:8766. every case runs with the plain
 # prompts, then again with gum when gum is installed. needs expect, python3, curl, git.
@@ -66,15 +66,13 @@ unsaid()  { ! grep -aqF -- "$1" "$out" || fail "$name: output should not contain
 called()  { grep -qF -- "$1" "$log" || fail "$name: expected a call: $1"; }
 uncalled() { ! grep -qF -- "$1" "$log" || fail "$name: unexpected call: $1"; }
 calls()   { [ "$(grep -cF -- "$1" "$log")" -eq "$2" ] || fail "$name: expected $2 calls of '$1', got $(grep -cF -- "$1" "$log")"; }
-# the work a full run does: five mcp servers, the plugins, the vendored skills, the rules link.
+# the work a full run does: four mcp servers, the plugins, the vendored skills, the rules link.
 installed() {
-  calls 'mcp add-json -s user' 5
+  calls 'mcp add-json -s user' 4
   called "claude plugin install langfuse-observability --marketplace langfuse/Claude-Observability-Plugin -y"
   called "claude plugin install cardea --marketplace $dir/repo -y"
-  # plannotator is already installed in the fake, so a run refreshes it instead.
-  called "claude plugin update plannotator@plannotator"
   for m in superpowers:obra/superpowers-marketplace ponytail:DietrichGebert/ponytail \
-           apple-skills:Prisma-Labs-Dev/apple-skills cloudflare:cloudflare/skills humanizer:blader/humanizer; do
+           apple-skills:Prisma-Labs-Dev/apple-skills cloudflare:cloudflare/skills humanizer:blader/humanizer axe:cameroncooke/AXe; do
     called "claude plugin install ${m%%:*} --marketplace ${m#*:} -y"
   done
   called 'uv tool install graphifyy==0.9.88'
@@ -88,7 +86,15 @@ installed() {
   [ "$(readlink "$dir/home/.claude/skills/tldr")" = "$dir/repo/claude/skills/tldr" ] || fail "$name: ~/.claude/skills/tldr is not linked to the repo"
   [ "$(readlink "$dir/home/.claude/skills/baby")" = "$dir/repo/claude/skills/baby" ] || fail "$name: ~/.claude/skills/baby is not linked to the repo"
   grep -q '"CLAUDE_CODE_ENABLE_TODO_TOOLS": "1"' "$dir/home/.claude/settings.json" 2>/dev/null || fail "$name: the task list was not turned on in ~/.claude/settings.json"
+  settings_has "$dir/home/.claude/settings.json"
   said 'claude auth login'
+}
+# the read-only basic memory tools are allowed once each, and the write tools are not.
+settings_has() {
+  for t in search_notes read_note build_context recent_activity list_directory list_memory_projects; do
+    [ "$(grep -c "\"mcp__basic-memory__$t\"" "$1")" -eq 1 ] || fail "$name: $t should be allowed exactly once in $1"
+  done
+  ! grep -q 'mcp__basic-memory__\(write\|edit\|move\|delete\)_note' "$1" || fail "$name: a basic memory write tool is allowed"
 }
 # gum drew the prompts in gum mode, and never in plain mode.
 prompted_by() {
@@ -172,6 +178,39 @@ for mode in $MODES; do
   installed http://truenas.local:3000
   python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(not (d["model"]=="x" and d["env"]["A"]=="1"))' "$dir/home/.claude/settings.json" || fail "$name: settings.json lost its other keys"
 
+  # a second run keeps the allow list free of duplicates (installed counts each rule once).
+  term 'sh install.sh --no-prompt' || fail "$name: second run exited non-zero"
+  settings_has "$dir/home/.claude/settings.json"
+  [ "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("agent",""))' "$dir/home/.claude/settings.json")" = "" ] || fail "$name: --no-prompt set the agent"
+
+  # the default agent: yes sets it, no removes the cardea value and keeps a foreign one.
+  agent() { python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("agent",""))' "$dir/home/.claude/settings.json"; }
+  setup agent-yes "$mode"
+  drive "" "" "" "" n y || fail "$name: exited non-zero"
+  [ "$(agent)" = cardea:orchestrator ] || fail "$name: yes should set the agent, has '$(agent)'"
+  TAGLINE='export CC_LANGFUSE_TRACE_TAGS="${CC_LANGFUSE_TRACE_TAGS:-agent:cardea:orchestrator}"'
+  ENVLINE='export LANGFUSE_TRACING_ENVIRONMENT="${LANGFUSE_TRACING_ENVIRONMENT:-agent-orchestrator}"'
+  [ "$(grep -cxF "$TAGLINE" "$dir/home/.zshrc")" -eq 1 ] && [ "$(grep -cxF "$ENVLINE" "$dir/home/.zshrc")" -eq 1 ] || fail "$name: yes should add the Langfuse label lines to ~/.zshrc once"
+  [ "$(grep -c '^# label hand-started' "$dir/home/.zshrc")" -eq 1 ] || fail "$name: yes should add the comment once"
+  said 'Langfuse agent label set in ~/.zshrc'
+  drive "" "" "" "" n y || fail "$name (rerun): exited non-zero"
+  [ "$(grep -cxF "$TAGLINE" "$dir/home/.zshrc")" -eq 1 ] && [ "$(grep -cxF "$ENVLINE" "$dir/home/.zshrc")" -eq 1 ] && [ "$(grep -c '^# label hand-started' "$dir/home/.zshrc")" -eq 1 ] || fail "$name (rerun): the Langfuse label lines were added again"
+  setup agent-no "$mode"
+  mkdir -p "$dir/home/.claude"; printf '{"agent":"cardea:orchestrator"}' > "$dir/home/.claude/settings.json"
+  printf 'alias keep=true\n# label hand-started claude sessions in Langfuse\n%s\n%s\n' "$TAGLINE" "$ENVLINE" > "$dir/home/.zshrc"
+  drive "" "" "" "" n n || fail "$name: exited non-zero"
+  [ -z "$(agent)" ] || fail "$name: no should remove the cardea agent, has '$(agent)'"
+  [ "$(cat "$dir/home/.zshrc")" = 'alias keep=true' ] || fail "$name: no should remove only the Langfuse label lines, has '$(cat "$dir/home/.zshrc")'"
+  setup agent-noprompt "$mode"
+  printf 'alias keep=true\n%s\n' "$TAGLINE" > "$dir/home/.zshrc"
+  term 'sh install.sh --no-prompt' || fail "$name: exited non-zero"
+  [ "$(cat "$dir/home/.zshrc")" = "alias keep=true
+$TAGLINE" ] || fail "$name: --no-prompt changed the profile"
+  setup agent-foreign "$mode"
+  mkdir -p "$dir/home/.claude"; printf '{"agent":"other:agent"}' > "$dir/home/.claude/settings.json"
+  drive "" "" "" "" n n || fail "$name: exited non-zero"
+  [ "$(agent)" = other:agent ] || fail "$name: no should keep a foreign agent, has '$(agent)'"
+
   # curl | sh: the script arrives on stdin and brew reads stdin.
   setup pipe "$mode"
   term 'cat install.sh | sh -s -- --no-prompt' EAT_STDIN=1 || fail "$name: exited non-zero"
@@ -185,7 +224,7 @@ for mode in $MODES; do
   said 'simulated failure for: plugin install ponytail'
   called 'plugin install humanizer'
   called 'plugin install cloudflare'
-  calls 'mcp add-json -s user' 5
+  calls 'mcp add-json -s user' 4
   said 'failed'
 
   # a plugin install that "succeeds" without being recorded is found and redone, and says so.
@@ -226,6 +265,17 @@ for mode in $MODES; do
   said 'basic memory — not configured'
   unsaid 'add ~/.local/bin to PATH'
   [ ! -e "$dir/home/.zshrc" ] || fail "$name: --check wrote a shell profile"
+
+  # a .local address draws the mDNS warning in --check; an ip address does not.
+  setup mdns-local "$mode"
+  printf 'BASIC_MEMORY_URL=http://truenas.local:8766/mcp\nLANGFUSE_HOST=http://truenas.local:3000\n' > "$dir/repo/.env"
+  term 'sh install.sh --check' || true
+  said 'can stall for seconds'
+
+  setup mdns-ip "$mode"
+  printf 'BASIC_MEMORY_URL=http://192.0.2.10:8766/mcp\nLANGFUSE_HOST=http://192.0.2.10:3000\n' > "$dir/repo/.env"
+  term 'sh install.sh --check' || true
+  unsaid 'can stall for seconds'
 
   # a fixable warning is offered at the end: yes appends the profile line once, a rerun keeps it
   # at one, no leaves the profile alone, and runs that cannot ask change nothing.

@@ -17,8 +17,8 @@ esac
 case "$*" in
   "--version") echo "2.1.310 (Claude Code)" ;;
   "plugin list --json")
-    printf '[{"id": "plannotator@plannotator"}'
-    for f in "$st"/plugins/*; do [ ! -e "$f" ] || printf ', {"id": "%s"}' "${f##*/}"; done
+    printf '['; sep=
+    for f in "$st"/plugins/*; do [ ! -e "$f" ] || { printf '%s{"id": "%s"}' "$sep" "${f##*/}"; sep=', '; }; done
     echo ']'
     exit 0 ;;
   "mcp list")

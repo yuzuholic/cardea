@@ -1,5 +1,5 @@
 #!/bin/sh
-# cardea — install the agent stack.
+# cardea: install the agent stack.
 #
 #   ./install.sh                 interactive: prompts for urls and keys, then probes them
 #   ./install.sh --no-prompt     keep whatever .env already holds, prompt for nothing
@@ -253,14 +253,21 @@ fi
 cd "$REPO_DIR"
 ENV_FILE="$REPO_DIR/.env"
 # the user-scope MCP servers cardea owns; anything else in claude code is left alone.
-MCP_NAMES='container-use|xcodebuild|swiftlens|xcode|basic-memory'; MCP_LIST=
+MCP_NAMES='xcodebuild|swiftlens|xcode|basic-memory'; MCP_LIST=
 
 # --- probes ----------------------------------------------------------------
 # any http status at all means something answered. an MCP endpoint may well reply
-# 404/405/406 to a bare GET — that still proves the host and port are live.
+# 404/405/406 to a bare GET, which still proves the host and port are live.
 # a reachable port proves very little, so each service is asked something it has to
 # understand. these set REACHED=1 on success so the prompts can offer a retry.
 REACHED=
+
+# .local names go through mDNS, which stalls for seconds now and then. a warning only.
+warn_mdns() {
+  case "$(printf '%s' "$1" | sed -n 's|^[a-z]*://\([^/:]*\).*|\1|p')" in
+    *.local) warn "$2 uses a .local name" ".local names resolve over mDNS and can stall for seconds; use the NAS's fixed IP or a router DNS name" ;;
+  esac
+}
 
 # speaks MCP? a streamable-http endpoint must answer initialize with a serverInfo.
 probe_mcp() {
@@ -341,18 +348,19 @@ probe_tool() {
 
 run_checks() {
   step "tools"
-  for t in brew git claude herdr uv uvx pnpm gh jq playwright-cli plannotator; do
+  for t in brew git claude herdr uv uvx pnpm gh jq playwright-cli; do
     probe_tool "$t"
   done
   # the isolation and iOS extras.
-  for t in docker container-use xcode-build-server; do
+  for t in docker xcode-build-server; do
     probe_tool "$t" "$t" optional
   done
-  # graphify and plannotator install into ~/.local/bin, which a stock shell profile leaves off PATH.
+  # graphify installs into ~/.local/bin, which a stock shell profile leaves off PATH.
   case ":$PATH:" in
     *":$HOME/.local/bin:"*) ;;
     *) warn "~/.local/bin is not on PATH" 'export PATH="$HOME/.local/bin:$PATH"'; fixable path ;;
   esac
+  info "default agent — $(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("agent", "none"))' "$HOME/.claude/settings.json" 2>/dev/null || echo none)"
   # an exported key makes claude code bill the api instead of using the subscription login.
   [ -n "${ANTHROPIC_API_KEY:-}" ] && warn "ANTHROPIC_API_KEY is set — claude code will use it instead of your subscription"
   if [ -d /Applications/Xcode.app ]; then
@@ -364,7 +372,7 @@ run_checks() {
     if docker info >/dev/null 2>&1; then
       ok "docker daemon running"
     else
-      warn "docker is installed but its daemon is not running" "open OrbStack (container-use needs it)"
+      warn "docker is installed but its daemon is not running" "open OrbStack"
       [ ! -d /Applications/OrbStack.app ] || fixable docker
     fi
   fi
@@ -373,6 +381,8 @@ run_checks() {
   load_env
   probe_mcp      "${BASIC_MEMORY_URL:-}" "basic memory"
   probe_langfuse "${LANGFUSE_HOST:-}"    "langfuse"
+  warn_mdns "${BASIC_MEMORY_URL:-}" "basic memory"
+  warn_mdns "${LANGFUSE_HOST:-}"    "langfuse"
 
   if command -v claude >/dev/null 2>&1; then
     step "claude code mcp servers"
@@ -436,21 +446,25 @@ fi
 command -v claude >/dev/null 2>&1 || die "claude code is not installed — the Brewfile step should have done it"
 ok "claude $(claude --version 2>/dev/null | cut -d' ' -f1)"
 
-# the task tools (TaskCreate, TaskList, TaskUpdate) are off by default on newer models. claude
-# has no command to set a settings env entry, so merge it in; an unreadable file is left alone.
+# the task tools (TaskCreate, TaskList, TaskUpdate) are off by default on newer models, and the
+# read-only Basic Memory tools should not wait on a permission prompt. claude has no command to set
+# either, so merge them in; an unreadable file is left alone. write tools stay unlisted.
 if python3 -c '
 import json, os, sys
 p = sys.argv[1]
 d = json.load(open(p)) if os.path.exists(p) else {}
 env = d.setdefault("env", {})
-if env.get("CLAUDE_CODE_ENABLE_TODO_TOOLS") != "1":
-    env["CLAUDE_CODE_ENABLE_TODO_TOOLS"] = "1"
-    os.makedirs(os.path.dirname(p), exist_ok=True)
-    json.dump(d, open(p, "w"), indent=2)
+env["CLAUDE_CODE_ENABLE_TODO_TOOLS"] = "1"
+allow = d.setdefault("permissions", {}).setdefault("allow", [])
+for t in ("search_notes", "read_note", "build_context", "recent_activity", "list_directory", "list_memory_projects"):
+    if "mcp__basic-memory__" + t not in allow:
+        allow.append("mcp__basic-memory__" + t)
+os.makedirs(os.path.dirname(p), exist_ok=True)
+json.dump(d, open(p, "w"), indent=2)
 ' "$HOME/.claude/settings.json" 2>/dev/null; then
-  ok "task list on (CLAUDE_CODE_ENABLE_TODO_TOOLS)"
+  ok "task list on (CLAUDE_CODE_ENABLE_TODO_TOOLS), basic memory reads allowed"
 else
-  warn "could not set CLAUDE_CODE_ENABLE_TODO_TOOLS in ~/.claude/settings.json — add it to \"env\" by hand"
+  warn "could not edit ~/.claude/settings.json — add CLAUDE_CODE_ENABLE_TODO_TOOLS to \"env\" and the basic memory read tools to \"permissions.allow\" by hand"
 fi
 
 # herdr writes its hook into the same settings.json the plugin installs write to, so it goes
@@ -477,15 +491,6 @@ plugin() {
   fi
 }
 
-# plannotator's plugin only wires hooks; they call the plannotator binary, installed bare.
-job_plannotator() {
-  j_ok=0
-  if ! command -v plannotator >/dev/null 2>&1; then
-    curl -fsSL https://plannotator.ai/install.sh | bash -s -- --version v0.28.31 --minimal --non-interactive || j_ok=1
-  fi
-  plugin plannotator@plannotator backnotprop/plannotator || j_ok=1
-  return "$j_ok"
-}
 # herdr, graphify and playwright-cli ship their own skills, generated from the installed
 # versions; marimo and langfuse publish theirs in git repos.
 vendor() { sh "$REPO_DIR/scripts/vendor-skills.sh" "$HOME/.claude/skills" "$@"; }
@@ -506,21 +511,20 @@ job_playwright() {
 job_skills() { vendor herdr marimo-notebook langfuse; }
 job_plugin() { plugin "$@"; }
 
-job "plannotator" job_plannotator
 job "graphify" job_graphify
 job "playwright-cli + chromium" job_playwright
 job "herdr, marimo, langfuse skills" job_skills
-# every plugin the run installs, "id source" per line. plannotator and langfuse have jobs of their own.
-PLUGIN_SPECS="plannotator@plannotator backnotprop/plannotator
-langfuse-observability@langfuse-observability langfuse/Claude-Observability-Plugin
+# every plugin the run installs, "id source" per line. langfuse has a job of its own.
+PLUGIN_SPECS="langfuse-observability@langfuse-observability langfuse/Claude-Observability-Plugin
 cardea@cardea $REPO_DIR
 superpowers@superpowers-marketplace obra/superpowers-marketplace
 ponytail@ponytail DietrichGebert/ponytail
 apple-skills@apple-skills Prisma-Labs-Dev/apple-skills
 cloudflare@cloudflare cloudflare/skills
-humanizer@humanizer blader/humanizer"
+humanizer@humanizer blader/humanizer
+axe@axe cameroncooke/AXe"
 while read -r s_id s_src; do
-  case "$s_id" in plannotator@*|langfuse-observability@*) continue ;; esac
+  case "$s_id" in langfuse-observability@*) continue ;; esac
   job "plugin ${s_id%@*}" job_plugin "$s_id" "$s_src"
 done <<PLUGINS
 $PLUGIN_SPECS
@@ -614,7 +618,7 @@ ask_secret() {
 }
 
 # ask, then actually talk to the thing. a wrong url is cheapest to fix right now,
-# while you are still looking at it — not at the end of the run.
+# while you are still looking at it, not at the end of the run.
 ask_url() {
   u_var="$1"; u_label="$2"; u_default="$3"; u_prober="$4"; u_shown="$2"; u_fill="$3"
   u_prev=''
@@ -645,6 +649,7 @@ ask_url() {
         u_value="${u_fill%%://*}://$u_host$u_path" ;;
     esac
     eval "$u_var=\$u_value"
+    warn_mdns "$u_value" "$(printf '%s' "$u_shown" | sed 's/ *$//')"
     [ -n "$PROMPT" ] || return 0
     info "testing $u_value"
     "$u_prober" "$u_value" "$(printf '%s' "$u_shown" | sed 's/ *$//')"
@@ -663,7 +668,7 @@ ask_url LANGFUSE_HOST    "langfuse url         " "${NAS_BASE:-http://truenas.loc
 ask_secret LANGFUSE_PUBLIC_KEY "langfuse public key  "
 ask_secret LANGFUSE_SECRET_KEY "langfuse secret key  "
 
-# write atomically, then lock it down — this file holds keys.
+# write atomically, then lock it down: this file holds keys.
 TMP_ENV="$ENV_FILE.$$"
 {
   printf '# cardea — written by install.sh on %s. not committed.\n\n' "$STAMP"
@@ -708,7 +713,6 @@ link "$REPO_DIR/claude/skills/baby" "$HOME/.claude/skills/baby"
 # remove-then-add keeps it idempotent.
 mcp_json() {
   case "$1" in
-    container-use) echo '{"type":"stdio","command":"container-use","args":["stdio"]}' ;;
     xcodebuild)    echo '{"type":"stdio","command":"npx","args":["-y","xcodebuildmcp@2.7.0","mcp"],"env":{"XCODEBUILDMCP_SENTRY_DISABLED":"true"}}' ;;
     swiftlens)     echo '{"type":"stdio","command":"uvx","args":["swiftlens@0.2.14"]}' ;;
     # a bare `xcrun mcpbridge` is the bridge; it only connects while xcode is running.
@@ -721,10 +725,10 @@ mcp() {
   claude mcp add-json -s user "$1" "$(mcp_json "$1")" >/dev/null && echo "mcp: $1" || { echo "mcp: $1 — could not register"; return 1; }
 }
 # the servers this run registers; basic memory only with a url.
-mcp_wanted() { echo "container-use xcodebuild swiftlens xcode${BASIC_MEMORY_URL:+ basic-memory}"; }
+mcp_wanted() { echo "xcodebuild swiftlens xcode${BASIC_MEMORY_URL:+ basic-memory}"; }
 job_mcp() {
   j_ok=0
-  for j_name in container-use xcodebuild swiftlens xcode; do
+  for j_name in xcodebuild swiftlens xcode; do
     mcp "$j_name" || j_ok=1
   done
   if [ -n "$BASIC_MEMORY_URL" ]; then
@@ -757,7 +761,7 @@ job "plugin langfuse-observability" job_langfuse
 verify_claude() {
   v_list=$(claude plugin list --json 2>/dev/null || true)
   while read -r v_id v_src; do
-    case "$v_id" in plannotator@*) v_label=plannotator ;; *) v_label="plugin ${v_id%@*}" ;; esac
+    v_label="plugin ${v_id%@*}"
     case "$FAILED_LABELS" in *"|$v_label|"*) continue ;; esac
     case "$v_list" in *"\"id\": \"$v_id\""*) continue ;; esac
     plugin "$v_id" "$v_src" >/dev/null 2>&1 || true
@@ -850,12 +854,51 @@ offer_fixes() {
   done
 }
 
+# the agent setting makes a plain `claude` start as the orchestrator; an explicit --agent still wins.
+# no answer (--no-prompt, no terminal) leaves the key alone, and a foreign value is never removed.
+offer_default_agent() {
+  [ -n "$PROMPT" ] || return 0
+  printf '\n'
+  if confirm "start every claude session as cardea:orchestrator?" y; then a_want=1; else a_want=; fi
+  if a_now=$(WANT="$a_want" python3 -c '
+import json, os, sys
+p = sys.argv[1]
+d = json.load(open(p)) if os.path.exists(p) else {}
+if os.environ["WANT"]:
+    d["agent"] = "cardea:orchestrator"
+elif d.get("agent") == "cardea:orchestrator":
+    del d["agent"]
+os.makedirs(os.path.dirname(p), exist_ok=True)
+json.dump(d, open(p, "w"), indent=2)
+print(d.get("agent", "none"))
+' "$HOME/.claude/settings.json" 2>/dev/null); then
+    ok "default agent: $a_now"
+  else
+    warn "could not edit ~/.claude/settings.json — set \"agent\" by hand"
+  fi
+
+  a_file=$(profile_file)
+  a_lines='# label hand-started claude sessions in Langfuse
+export CC_LANGFUSE_TRACE_TAGS="${CC_LANGFUSE_TRACE_TAGS:-agent:cardea:orchestrator}"
+export LANGFUSE_TRACING_ENVIRONMENT="${LANGFUSE_TRACING_ENVIRONMENT:-agent-orchestrator}"'
+  if [ -n "$a_want" ]; then
+    printf '%s\n' "$a_lines" | while IFS= read -r a_line; do
+      { [ -f "$a_file" ] && grep -qxF "$a_line" "$a_file"; } || printf '%s\n' "$a_line" >> "$a_file" || exit 1
+    done && ok "Langfuse agent label set in ~${a_file#"$HOME"}" || bad "could not write to $a_file"
+  elif [ -f "$a_file" ] && printf '%s\n' "$a_lines" | grep -qxFf - "$a_file"; then
+    a_tmp="$a_file.cardea.$$"
+    { printf '%s\n' "$a_lines" | grep -vxFf - "$a_file" > "$a_tmp" || [ $? -eq 1 ]; } &&
+      cat "$a_tmp" > "$a_file" && rm -f "$a_tmp" && ok "Langfuse agent label removed from ~${a_file#"$HOME"}" || bad "could not edit $a_file"
+  fi
+}
+
 step "installing"
 await_jobs
 verify_claude
 run_checks
 summary
 offer_fixes
+offer_default_agent
 
 # --- next steps ------------------------------------------------------------
 if has_gum; then

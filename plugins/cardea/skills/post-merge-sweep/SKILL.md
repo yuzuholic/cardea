@@ -84,6 +84,12 @@ close the tab in `$HERDR_TAB_ID`. Take each tab ID from the `tab_id` field of a 
 `herdr tab list`, never from a remembered value: `herdr tab close <tab_id>`. List the tabs again
 afterwards and report a tab that is still there rather than retrying in a loop.
 
+Implementers run as panes in the orchestrator's right-hand column (see `cardea:herdr`), so also check
+`herdr pane list --workspace "$HERDR_WORKSPACE_ID"`. Close an `impl-<task>` pane whose agent is
+`idle` or `done`, whose task is finished and that no running session uses, with
+`herdr pane close <pane_id>`. Never close `$HERDR_PANE_ID` or a pane you can't tie to a finished
+task.
+
 ## 3. git
 
 ```sh

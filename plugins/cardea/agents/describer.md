@@ -16,7 +16,7 @@ written, stop and say why instead of working around it.
 ## Work
 
 1. View the reference as the brief says: `playwright-cli` for a web UI, the
-   `driving-ios-simulator-with-axe` skill for a Swift app, or the Read tool for a folder of
+   official AXe plugin for a Swift app, or the Read tool for a folder of
    screenshots. You may read the reference code, when there is any, to learn exact values,
    behaviour and states. With screenshots only, list the states they do not show before
    writing the rubric. Grading always renders the implementer's UI live. Open every

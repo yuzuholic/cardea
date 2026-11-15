@@ -1,9 +1,9 @@
 ---
-name: app-copy
+name: ux-writing
 description: The house rules for user-facing app copy - state the condition, action or result outright, with a substitution test for loose verbs and the patterns that make strings read as machine-written. Use when writing, changing or reviewing UI strings, alerts, empty states, settings labels, onboarding or release notes.
 ---
 
-# App copy
+# UX writing
 
 User-facing copy states the condition, action or result outright. The aim is exactness, not
 avoiding text that "sounds like AI": judging by feel is barely better than chance, and an exact

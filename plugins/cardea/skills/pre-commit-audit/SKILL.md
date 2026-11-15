@@ -77,7 +77,7 @@ Zero compiler warnings; fix any before going on. Other stacks: the project's lin
   `entry`, not `e`; `scores`, not `out`. Single letters only where the domain itself uses them, such as
   `x`, `y`, `z` for coordinates. Rename in the changed files, and update every caller and test.
 - The project's copy and terminology rules hold for user-facing text; where it has none, the
-  `app-copy` rules do.
+  `ux-writing` rules do.
 - No mention of an AI tool or company in the change. Run
   `python3 -I "${CLAUDE_PLUGIN_ROOT}/hooks/hook.py" scan`,
   remove what it lists where it is attribution, and put the rest in the report for the user,

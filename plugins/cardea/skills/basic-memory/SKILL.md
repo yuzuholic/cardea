@@ -6,7 +6,8 @@ description: "Read and write durable notes in Basic Memory, the self-hosted know
 # Basic Memory
 
 Basic Memory is the long-term memory shared by every session and project. It runs on the
-NAS (`basic-memory` MCP server, `http://truenas.local:8766/mcp`) and stores plain markdown in
+NAS (`basic-memory` MCP server; the address is `BASIC_MEMORY_URL` in cardea's `.env`, default
+`http://truenas.local:8766/mcp`) and stores plain markdown in
 the NAS's `kb/` folder, the same files the user reads in Obsidian (see the `obsidian` skill).
 
 ## Projects
@@ -174,9 +175,20 @@ each other.
 
 ## When to read
 
-- At the start of non-trivial work in a project: `recent_activity`, then `search_notes` for the
-  topic. Read the hits with `read_note` or `build_context` (`memory://...` URIs).
-- Before asking the user a question about past decisions. Ask only if nothing answers it.
+- Before asking the user a question about past decisions, and at the start of non-trivial work
+  that may touch one. Ask only if nothing answers it.
+- Don't call `recent_activity` at the start of work: the session note already lists the recent
+  notes.
+
+A lookup is one `search_notes` call:
+
+1. Answer from the hits' snippets when they suffice.
+2. Otherwise `read_note` the single best hit.
+3. Use `build_context` (`memory://...` URIs) only to follow a note's relations.
+
+Make at most 3 calls per lookup and stop at the first answer. Don't re-read a note already read
+this session. Run independent lookups together, as several `search_notes` calls in one message,
+rather than chaining them.
 
 ## When to write
 

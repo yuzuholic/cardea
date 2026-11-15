@@ -57,7 +57,7 @@ Choosing what goes in:
 Aim for three to six additions or changes and two to four meaningful fixes, under `Added`, `Changed`
 and `Fixed`.
 
-Voice: the `app-copy` rules - state the condition, action or result outright.
+Voice: the `ux-writing` rules - state the condition, action or result outright.
 
 - Lead with the ability or visible outcome: `Filter chapters by source, scanlator or language.`
 - Present tense for capabilities, symptom language for fixes:

@@ -109,10 +109,15 @@ def session(data):
         "- Look things up in the order the retrieval-order skill sets: this session, rules and memory, "
         "Basic Memory, the active plan, graphify, the code, git history, live evidence, "
         "skills and docs, then the web, and the user last. Stop at the first source that answers.",
+        "- Basic Memory lookups: one search_notes, then read only the best hit; the recent notes below "
+        "replace recent_activity.",
         f'- Basic Memory project for this repo: "{project}" (pass it as project).',
         "- graphify-out/ exists here: start codebase questions with the graphify skill." if graph
         else "- No graphify-out/ in this project.",
     ]
+    if os.environ.get("HERDR_ENV") == "1":
+        lines.append("- Inside herdr: load the cardea:herdr skill before opening panes or starting agents.")
+
     try:
         lines += recent_notes(project)
     except Exception:

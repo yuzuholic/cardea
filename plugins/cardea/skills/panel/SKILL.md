@@ -35,6 +35,10 @@ Keep your own preference out of the brief. A leading brief makes three copies of
 Dispatch all three in one message so they run concurrently and independently. Tell each to read the
 material and answer in its own format. Don't share one reviewer's answer with another.
 
+Give each Agent call a fixed `description`, its agent name: `panel-ux-designer`,
+`panel-average-chud` or `panel-power-user`. Langfuse names the span `Subagent: <description>`, so a
+fixed value is what makes the panel chartable.
+
 ## 3. Merge
 
 When all three are back, give the user:

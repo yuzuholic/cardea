@@ -5,9 +5,17 @@ description: "Langfuse, the self-hosted tracing for every Claude Code session. U
 
 # Langfuse
 
-Every Claude Code turn is sent to Langfuse on the NAS (`http://truenas.local:3000`) by the
+Every Claude Code turn is sent to Langfuse on the NAS (`LANGFUSE_HOST` in cardea's `.env`, default `http://truenas.local:3000`) by the
 `langfuse-observability` plugin: the prompt, the reply, each tool call with its input and
 output, and timing, grouped by session and tagged with the skills used.
+Sessions started in a herdr pane by an orchestrator also carry the tag `agent:cardea:<agent>`
+(`implementer`, `describer` or `reviewer`), set through `CC_LANGFUSE_TRACE_TAGS`; to compare agents,
+filter **Tracing** by that tag. These panes also set the environment `agent-<agent>`; to chart
+agent type over time, open **Tracing**, switch to **Chart** and set **Breakdown** to
+**Environment**. Hand-started sessions show as `agent-orchestrator` when the installer's
+default-agent prompt was answered yes, and as `default` otherwise. Panel and other Agent-tool
+subagents appear as observations named `Subagent: <agent>`; to chart them, look at observations
+rather than traces, filtered by name.
 
 ## Finding something from an earlier session
 
@@ -19,8 +27,8 @@ cannot read Langfuse yourself; the keys live in the macOS keychain and are not y
 
 Check in this order, and stop at the first failure:
 
-1. Langfuse is up: `curl -s -o /dev/null -w '%{http_code}' http://truenas.local:3000/api/public/health`
-   should print `200`. The first request after a restart can take about 30 seconds.
+1. Langfuse is up: `curl -s -o /dev/null -w '%{http_code}' $LANGFUSE_HOST/api/public/health`
+   (substitute the host from cardea's `.env`) should print `200`. The first request after a restart can take about 30 seconds.
 2. The plugin is installed and enabled: `claude plugin list`.
 3. It has keys: `claude plugin configure langfuse-observability@langfuse-observability` lists
    which options are unset. The user creates keys in the Langfuse UI under **Settings → API

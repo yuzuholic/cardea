@@ -15,10 +15,9 @@ leaves everything else to you.
 | tldr skill | `~/.claude/skills/tldr/` | Symlink to `claude/skills/tldr/` |
 | baby skill | `~/.claude/skills/baby/` | Symlink to `claude/skills/baby/` |
 | MCP servers | User scope in `~/.claude.json` | `claude mcp add-json --scope user` |
-| Plannotator | Plugin, plus the `plannotator` binary | Plugin marketplace, binary installer |
 | Langfuse tracing | Plugin | Plugin marketplace, configured from `.env` |
 | Cardea plugin | Plugin, a copy in `~/.claude/plugins/cache/` | `claude plugin install` from the repo |
-| Five more plugins | Plugins | Their own marketplaces |
+| Six more plugins | Plugins | Their own marketplaces |
 | herdr, graphify, playwright-cli, marimo and langfuse skills | `~/.claude/skills/herdr/`, `~/.claude/skills/graphify/`, `~/.claude/skills/playwright-cli/`, `~/.claude/skills/marimo-notebook/`, `~/.claude/skills/langfuse/` | `scripts/vendor-skills.sh` |
 | Playwright CLI | The `playwright-cli` binary, with Chromium | `npm install -g @playwright/cli@0.1.24`, then `playwright-cli install-browser chromium` |
 
@@ -30,18 +29,18 @@ leaves everything else to you.
 
 ## MCP servers
 
-See [MCP](/docs/mcp) for the five servers Cardea registers.
+See [MCP](/docs/mcp) for the four servers Cardea registers.
 
 ## Plugins
-
-**Plannotator** opens plans in a review UI before Claude acts on them. The plugin only adds
-hooks; those hooks call the `plannotator` binary, which the script installs on its own at a
-pinned version.
 
 **Langfuse** sends each turn to Langfuse after it finishes: your prompt, Claude's reply,
 every tool call, and timing, grouped by session. The script always points it at the NAS, even
 before there are keys, so it never falls back to Langfuse's hosted service. The secret key is
-passed on standard input, kept out of the process list, and stored in the macOS keychain.
+passed on standard input, kept out of the process list, and stored in the macOS keychain. Orchestrator-started panes also carry a trace tag,
+`agent:cardea:<agent>` (set through `CC_LANGFUSE_TRACE_TAGS`), so in Langfuse you can filter
+**Tracing** by tag to compare orchestrator, implementer, describer and reviewer sessions. These panes also set the environment
+`agent-<agent>`, so to chart agent type over time, open **Tracing**, switch to **Chart** and set
+**Breakdown** to **Environment**. Sessions you start by hand show as `agent-orchestrator` when you answered yes to the installer's default-agent prompt, and as `default` otherwise. Panel and other Agent-tool subagents appear as observations named `Subagent: <agent>`; to chart them, look at observations rather than traces, filtered by name.
 
 ## The Cardea plugin
 
@@ -109,6 +108,7 @@ that were turned off and updates each one.
 | [apple-skills](https://github.com/Prisma-Labs-Dev/apple-skills) | Apple API references: SwiftUI, UIKit, SwiftData and more |
 | [cloudflare](https://github.com/cloudflare/skills) | Guidance for building on Cloudflare |
 | [humanizer](https://github.com/blader/humanizer) | Rewrites text that reads as machine-written |
+| [axe](https://github.com/cameroncooke/AXe) | Drives the iOS Simulator: taps, typing and screenshots. Needs AXe 2.0 or later, installed by the Brewfile |
 
 herdr, graphify and playwright-cli each ship a skill of their own. `scripts/vendor-skills.sh`
 generates all three from the installed versions on every run, so they always match. graphify's installer would

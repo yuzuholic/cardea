@@ -28,7 +28,7 @@ or tell them to rerun `install.sh`.
 
 | Role | Agent | Model | Does |
 |---|---|---|---|
-| Describer | `cardea:describer` | Opus 5.5, medium | Views the reference (`playwright-cli` for web; the `driving-ios-simulator-with-axe` skill for Swift; the Read tool for screenshots) and may read its code. Writes the rubric, briefs the implementer, grades the rendered UI, never the code. Writes no product code. |
+| Describer | `cardea:describer` | Opus 5.5, medium | Views the reference (`playwright-cli` for web; the official AXe plugin for Swift; the Read tool for screenshots) and may read its code. Writes the rubric, briefs the implementer, grades the rendered UI, never the code. Writes no product code. |
 | Blind implementer | `cardea:implementer` | Sonnet 5.5, low | Builds only from the describer's briefs. Never sees the reference. |
 | Reviewer | `cardea:reviewer` | Opus 5.5, medium | After building passes: the `comment-audit` skill plus a logic rubric on the code, and applies the fixes. |
 
@@ -80,43 +80,41 @@ herdr, stop and tell the user; never run a blind port through the fallback.
 
 ## 4. Layout in herdr
 
-The orchestrator keeps the left pane. To its right, one row per feature, each row split into
-describer on the left and implementer on the right. At review, the implementer pane closes and
-the describer pane closes too, and the reviewer runs alone in that row.
-
-Parse every ID from the JSON, keep the user's focus where it is and touch only the panes you
-create, as the herdr skill sets out. Commands (read the pane IDs from the JSON each
-command returns):
+Follow `cardea:herdr` for the layout, names, Langfuse env and etiquette. A feature's describer and
+implementer sit in adjacent rows, the implementer directly below its describer. At review, both
+close and the reviewer takes one row. Commands (read the pane IDs from the JSON each command
+returns):
 
 ```sh
-# first feature row: split the orchestrator's pane to the right
-herdr pane split --pane <orchestrator_pane> --direction right --cwd "<worktree>"
-# each further row: split the previous row's describer pane down
-herdr pane split --pane <previous_describer_pane> --direction down --cwd "<worktree>"
-# the implementer: split the row's describer pane to the right, with the blind variables
-herdr pane split --pane <describer_pane> --direction right --cwd "<worktree>" \
-  --env CARDEA_BLIND=1 --env "CARDEA_BLIND_PATHS=<paths>" --env "CARDEA_BLIND_URLS=<urls>"
+# the first describer: split the orchestrator's pane to the right; later ones split the tallest
+# right-hand pane down
+herdr pane split --pane <orchestrator_pane> --direction right --cwd "<worktree>" --no-focus \
+  --env CC_LANGFUSE_TRACE_TAGS=agent:cardea:describer --env LANGFUSE_TRACING_ENVIRONMENT=agent-describer
+herdr pane split --pane <tallest_right_pane> --direction down --cwd "<worktree>" --no-focus \
+  --env CC_LANGFUSE_TRACE_TAGS=agent:cardea:describer --env LANGFUSE_TRACING_ENVIRONMENT=agent-describer
+# the implementer: split its describer's pane down, with the blind variables
+herdr pane split --pane <describer_pane> --direction down --cwd "<worktree>" --no-focus \
+  --env CC_LANGFUSE_TRACE_TAGS=agent:cardea:implementer --env LANGFUSE_TRACING_ENVIRONMENT=agent-implementer --env CARDEA_BLIND=1 --env "CARDEA_BLIND_PATHS=<paths>" --env "CARDEA_BLIND_URLS=<urls>"
 # start the agents in their panes
 herdr agent start desc-<feature> --kind claude --pane <describer_pane> -- --agent cardea:describer --model claude-opus-5-5 --effort medium
 herdr agent start impl-<feature> --kind claude --pane <implementer_pane> -- --agent cardea:implementer --model claude-sonnet-5-5 --effort low
-# at review: close the implementer pane, split the reviewer pane from the describer's, then close
-# the describer pane so the reviewer runs alone in the row
+# at review: split the reviewer pane down from the implementer's, then close the implementer and
+# describer panes so the reviewer holds the feature's one row
+herdr pane split --pane <implementer_pane> --direction down --cwd "<worktree>" --no-focus \
+  --env CC_LANGFUSE_TRACE_TAGS=agent:cardea:reviewer --env LANGFUSE_TRACING_ENVIRONMENT=agent-reviewer
 herdr pane close <implementer_pane>
-herdr pane split --pane <describer_pane> --direction right --cwd "<worktree>"
 herdr pane close <describer_pane>
 herdr agent start rev-<feature> --kind claude --pane <reviewer_pane> -- --agent cardea:reviewer --model claude-opus-5-5 --effort medium
 ```
 
-Send briefs and read reports with `herdr agent prompt ... --wait --timeout <budget in ms>` and
-`herdr agent read ... --source recent-unwrapped --lines 200`, as background commands, and branch
-on the results as the orchestrator's table sets out.
+Send briefs, read reports and branch on the results as `cardea:herdr` sets out.
 
 ## 5. Concurrency
 
-The orchestrator's cap of five agents holds, counting sessions: a building row (describer plus
-implementer) counts as two, a reviewing row (the reviewer alone, describer and implementer both
-closed) as one. Two
-features can build at once with room for one in review. A feature that would exceed the cap
+The orchestrator's cap of five agents holds, counting sessions and right-hand rows alike: a
+building feature (describer plus implementer) takes two rows, a reviewing feature (the reviewer
+alone, describer and implementer both closed) one. Two features can build at once with room for
+one in review. A feature that would exceed the cap
 waits in the queue and starts when a slot frees.
 
 ## 6. Flow
@@ -148,8 +146,8 @@ Goal: describe the reference UI for <feature> so a blind implementer can rebuild
 what it builds.
 Reference: <URL | app, scheme and screen | screenshots folder>. Reference code, which you may
 read, if any: <paths>.
-View it with: <playwright-cli, opened with --browser=chromium | the driving-ios-simulator-with-axe
-skill | the Read tool>.
+View it with: <playwright-cli, opened with --browser=chromium | the official AXe plugin
+| the Read tool>.
 With screenshots only, list the states they do not show before round one.
 Worktree to run and grade the implementer's UI in: <worktree path>. How to run it: <command>.
 Write the rubric to <worktree>/.blind/rubric.md, in the rubric format below, before anything else.

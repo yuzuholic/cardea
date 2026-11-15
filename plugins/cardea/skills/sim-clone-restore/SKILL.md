@@ -23,7 +23,7 @@ use those names.
 - Golden missing: stop and tell the user. Rebuild it only when asked.
 - Builds for a clone use their own derived data (`-derivedDataPath .context/dd`) so concurrent
   sessions don't lock a shared one.
-- Drive the app with the `driving-ios-simulator-with-axe` skill.
+- Drive the app with the official AXe plugin.
 
 ## 1. Check disk space first
 

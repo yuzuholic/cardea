@@ -25,8 +25,8 @@ Cardea has two entry points, each with its own settings file.
 
 ### The Mac: `install.sh`
 
-Installs Claude Code and everything around it: the Homebrew packages, the global rules, six
-MCP servers, eight plugins (Cardea's own among them), and the links to the NAS. It asks for the NAS
+Installs Claude Code and everything around it: the Homebrew packages, the global rules, four
+MCP servers, seven plugins (Cardea's own among them), and the links to the NAS. It asks for the NAS
 addresses and Langfuse keys, tests each one as you enter it, and keeps them in `.env`.
 
 Install Xcode 26.3 or later first and keep it running; a script cannot install it.
@@ -67,7 +67,7 @@ Add `-Check` to report prerequisites and links without changing anything.
 
 ### The NAS: `nas/compose.yml`
 
-Runs the self-hosted services (Basic Memory, Langfuse and Obsidian) as one service,
+Runs the self-hosted services (Basic Memory and Langfuse) as one service,
 `yuzuholic/cardea`, which starts each of them from its official image. Put three things in one
 folder on the NAS:
 
@@ -91,18 +91,17 @@ claude plugin marketplace add yuzuholic/cardea
 claude plugin install cardea@cardea
 ```
 
-**22 skills**
+**20 skills**
 
 | For | Skills |
 |---|---|
-| The self-hosted stack | `basic-memory`, `langfuse`, `obsidian`, `plannotator`, `graphify` |
+| The self-hosted stack | `basic-memory`, `langfuse`, `obsidian`, `graphify` |
 | Looking things up | `retrieval-order` |
-| Sessions | `handoff` |
+| Sessions | `handoff`, `herdr` |
 | Diagrams | `mermaid` |
-| iOS | `driving-ios-simulator-with-axe`, `rendering-swiftui-previews`, `sim-clone-restore`, `grdb` |
-| Reviews and releases | `panel`, `comment-audit`, `pre-commit-audit`, `semantic-commit`, `local-merge`, `post-merge-sweep`, `release-changelog`, `app-copy` |
+| iOS | `rendering-swiftui-previews`, `sim-clone-restore`, `grdb` |
+| Reviews and releases | `panel`, `comment-audit`, `pre-commit-audit`, `semantic-commit`, `local-merge`, `post-merge-sweep`, `release-changelog`, `ux-writing` |
 | Porting a UI to another framework | `blind-port` |
-| Recommendations | `recsys` |
 
 **7 agents**: the design panel's UX designer, average chud and power user, which the `panel`
 skill runs at once and merges into one verdict; and an orchestrator and an implementer for
@@ -127,12 +126,10 @@ or for a quick refresh run `claude plugin update cardea@cardea`.
 | Area | Tool |
 |---|---|
 | Agent | [Claude Code](https://github.com/anthropics/claude-code) |
-| Plan review | [Plannotator](https://github.com/backnotprop/plannotator) |
 | Tracing | [Langfuse](https://github.com/langfuse/langfuse), self-hosted |
-| Notes | [Basic Memory](https://github.com/basicmachines-co/basic-memory), read and edited in the browser with [Obsidian](https://obsidian.md) |
+| Notes | [Basic Memory](https://github.com/basicmachines-co/basic-memory) |
 | Code understanding | [graphify](https://pypi.org/project/graphifyy/) |
 | iOS | [XcodeBuildMCP](https://github.com/cameroncooke/XcodeBuildMCP), [SwiftLens](https://github.com/swiftlens/swiftlens), Xcode's `mcpbridge`, [xcode-build-server](https://github.com/SoundBlaster/xcode-build-server) |
-| Isolation | [container-use](https://github.com/dagger/container-use) |
 | Terminal | [herdr](https://github.com/ogulcancelik/herdr), [gum](https://github.com/charmbracelet/gum) for the installer |
 
 Every version is pinned where it can be. [Stack](https://yuzuholic.github.io/cardea/docs/stack)

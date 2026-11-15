@@ -23,8 +23,8 @@ stand-in tools where the real ones would install things.
 
 ## Installer tests
 
-Runs `install.sh` from start to finish against stand-ins: fake `brew`, `claude`, `herdr` and
-`plannotator` that only record how they were called (in `tests/fakes/`), and a small fake NAS
+Runs `install.sh` from start to finish against stand-ins: fake `brew`, `claude` and `herdr`
+that only record how they were called (in `tests/fakes/`), and a small fake NAS
 that answers for Basic Memory and Langfuse. It drives the prompts through a real terminal
 and checks what the run did, not just what it printed:
 
@@ -40,7 +40,7 @@ and checks what the run did, not just what it printed:
   only arrives with the Brewfile, the run switches to gum part-way through.
 - A job that fails is reported with its log, the other jobs still finish, and the run exits
   non-zero.
-- Every full run registers the five MCP servers, installs the plugins and links the rules
+- Every full run registers the four MCP servers, installs the plugins and links the rules
   file.
 
 Every case runs twice: once with the plain prompts and once with gum. gum must not be in a

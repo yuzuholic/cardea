@@ -3,3 +3,6 @@
 .DS_Store
 backup/
 __pycache__/
+.*/
+!.claude-plugin/
+!.github/

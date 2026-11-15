@@ -166,11 +166,13 @@ for r in Demo Other; do git -C "$work/$r" init -q; done
 git -C "$work/Demo" -c user.name=t -c user.email=t@example.com commit -q --allow-empty -m 'chore: init'
 git -C "$work/Demo" worktree add -q "$work/demo-wt" 2>/dev/null
 cfg() { printf '{"mcpServers": {"basic-memory": {"type": "http", "url": "%s"}}}' "$1" > "$work/home/.claude.json"; }
-session() { out=$(printf '{"source": "startup"}' | env HOME="$work/home" CLAUDE_PROJECT_DIR="$1" python3 -I "$HOOK" session) || fail "session exited non-zero"; }
+session() { out=$(printf '{"source": "startup"}' | env -u HERDR_ENV HOME="$work/home" CLAUDE_PROJECT_DIR="$1" ${HERDR:+HERDR_ENV=1} python3 -I "$HOOK" session) || fail "session exited non-zero"; }
 cfg "http://127.0.0.1:$PORT/mcp"
 session "$work/Demo"
-says 'project for this repo: \"demo\"'; says 'graphify-out/ exists'; says 'Use CRDTs for sync'; says 'retrieval-order skill'
+says 'project for this repo: \"demo\"'; says 'graphify-out/ exists'; says 'Use CRDTs for sync'; says 'retrieval-order skill'; says 'one search_notes, then read only the best hit'
 [ "$(python3 -c 'import json,sys; print(len(json.loads(sys.argv[1])["hookSpecificOutput"]["additionalContext"].splitlines()))' "$out")" -le 15 ] || fail "the session note is over 15 lines"
+session "$work/Demo"; case "$out" in *'load the cardea:herdr skill'*) fail "the herdr line appeared outside herdr";; esac
+HERDR=1 session "$work/Demo"; HERDR= ; says 'load the cardea:herdr skill'
 session "$work/demo-wt"; says 'project for this repo: \"demo\"'
 session "$work/Other"; says 'no project \"other\"'; says 'No graphify-out/'
 cfg http://127.0.0.1:1/mcp
@@ -179,6 +181,12 @@ rm "$work/home/.claude.json"
 session "$work/Demo"; says "isn't configured"
 
 # every hook fails open on input it can't read.
+# the blind hook's command exits in the shell, before python starts, unless CARDEA_BLIND=1.
+bcmd=$(python3 -c 'import json; print([h["command"] for g in json.load(open("plugins/cardea/hooks/hooks.json"))["hooks"]["PreToolUse"] for h in g["hooks"] if h["command"].endswith(" blind")][0])') || fail "no blind hook command"
+case $bcmd in '[ "${CARDEA_BLIND:-}" = 1 ] || exit 0; '*) ;; *) fail "the blind hook command lacks the shell guard" ;; esac
+out=$(printf '{}' | env -u CARDEA_BLIND CLAUDE_PLUGIN_ROOT=/nonexistent sh -c "$bcmd") || fail "the guarded blind hook should exit 0 without CARDEA_BLIND"
+[ -z "$out" ] || fail "the guarded blind hook should print nothing without CARDEA_BLIND"
+
 for h in session secrets blind commit web handoff; do allowed "$h" 'not json'; done
 
 # hooks.json: six entries, none tied to a shell; each command runs as written on the Mac, and
@@ -199,9 +207,9 @@ count=0
 secret=$(tool s Read file_path /repo/server.pem)
 while IFS= read -r line; do
   cmd=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).replace("${CLAUDE_PLUGIN_ROOT}", sys.argv[2]))' "$line" "$root")
-  mac=$(printf '%s' "$secret" | env -u OS HOME="$work/home" CLAUDE_PLUGIN_DATA="$work/data-mac" sh -c "$cmd") || fail "hooks.json entry exited non-zero: $cmd"
+  mac=$(printf '%s' "$secret" | env -u OS CARDEA_BLIND=1 HOME="$work/home" CLAUDE_PLUGIN_DATA="$work/data-mac" sh -c "$cmd") || fail "hooks.json entry exited non-zero: $cmd"
   : > "$work/stub/py.log"
-  win=$(printf '%s' "$secret" | env OS=Windows_NT PATH="$work/stub:$PATH" HOME="$work/home" CLAUDE_PLUGIN_DATA="$work/data-win" sh -c "$cmd") || fail "hooks.json entry exited non-zero with OS=Windows_NT: $cmd"
+  win=$(printf '%s' "$secret" | env OS=Windows_NT CARDEA_BLIND=1 PATH="$work/stub:$PATH" HOME="$work/home" CLAUDE_PLUGIN_DATA="$work/data-win" sh -c "$cmd") || fail "hooks.json entry exited non-zero with OS=Windows_NT: $cmd"
   [ -s "$work/stub/py.log" ] || fail "OS=Windows_NT should launch py: $cmd"
   [ "$mac" = "$win" ] || fail "py and python3 results differ: $cmd"
 

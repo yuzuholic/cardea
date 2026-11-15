@@ -1,8 +1,5 @@
-tap "dagger/tap"
-
 cask "claude-code"
 brew "herdr"
-cask "dagger/tap/container-use"
 cask "orbstack"
 brew "xcode-build-server"
 brew "uv"
@@ -10,3 +7,4 @@ brew "node"
 brew "pnpm"
 brew "gh"
 brew "gum"
+brew "cameroncooke/axe/axe"

@@ -72,7 +72,6 @@ The stack used to run straight from `docker-compose.yml` on the NAS. To switch, 
 | Service | Port | Reachable from |
 |---|---|---|
 | Basic Memory | 8766 | LAN |
-| Obsidian | 3001 (HTTPS) | LAN |
 | Langfuse web | 3000 | LAN |
 | MinIO | 9090 | LAN |
 | ClickHouse, Postgres, Redis, Langfuse worker | — | The NAS itself only |
@@ -86,7 +85,18 @@ Cloudflare tunnel without Cloudflare Access in front of it.
 **MinIO's 9090 has to stay on the LAN**, because your browser uploads Langfuse media straight
 to it. That is why the media addresses point at `truenas.local` and not `localhost`.
 
-Use `truenas.local` for the NAS everywhere. `nas.local` does not exist on this network.
+The repo defaults use `truenas.local`; `nas.local` does not exist on this network. For the
+Mac's own settings, see [Use a fixed address](#use-a-fixed-address).
+
+## Use a fixed address
+
+`.local` names resolve over mDNS, which stalls for 2-4 s now and then. Every Basic Memory and
+Langfuse call pays for that. Measured by name, calls spiked to 2-4 s; by IP, 0.24 s at most.
+
+Only the Mac's `BASIC_MEMORY_URL` and `LANGFUSE_HOST` matter for speed. Set them to the
+NAS's fixed IP or a router DNS name in your own `.env`, never in the repo. `./install.sh`
+and `./install.sh --check` warn about any `.local` address. `NEXTAUTH_URL`, the S3
+endpoints are only used by the browser, so they can stay as they are.
 
 ## Secrets
 
@@ -96,6 +106,9 @@ They live in `.env` beside `compose.yml` on the NAS, never in the repo.
 empty password.
 
 The Cloudflare tunnel is optional. It only starts when `CLOUDFLARE_TUNNEL_TOKEN` is set.
+
+One more setting is optional. `BASIC_MEMORY_DEFAULT_PROJECT` names the Basic Memory project made the default at each start;
+without it, Basic Memory keeps the default it already has. Langfuse telemetry is off.
 
 Generate them as hex, not base64. The Postgres password ends up inside a web address, and
 base64's `+`, `/` and `=` would break it.
@@ -134,7 +147,7 @@ answers.
 ## Basic Memory
 
 The notes are plain markdown in `kb/`, beside the compose file. Every top-level folder in
-`kb/` is one Basic Memory project: today `aletheia` (the default) and `homelab`, and `system` joins them once the server
+`kb/` is one Basic Memory project: today `aletheia` and `homelab`, and `system` joins them once the server
 restarts. Basic Memory
 registers each folder as a project every time it starts, so a new project is a new folder
 and a restart:
@@ -225,44 +238,10 @@ all six templates and the rules agents follow.
 In Obsidian, a CSS snippet hides the `title` and `permalink` properties, the inline title is
 off, and the Automatic Table of Contents plugin renders the `toc` code blocks.
 
-## Obsidian
-
-The Obsidian desktop app runs on the NAS and streams to your browser at
-`https://truenas.local:3001`. It edits the files in `kb/` directly: the same plain markdown
-Basic Memory reads, so there is nothing to sync.
-
-Add a login to the NAS `.env` first. An empty password would mean no login at all, so
-without both values the stack refuses to start:
-
-```sh
-OBSIDIAN_USER=admin
-OBSIDIAN_PASSWORD=   # openssl rand -hex 24
-```
-
-Basic Memory and Obsidian run as uid 1000 by default. When the notes folder grants access by
-group instead, set `BASIC_MEMORY_USER` (`uid:gid`), `OBSIDIAN_PUID` and `OBSIDIAN_PGID` in the
-same `.env` to users in that group. Before Basic Memory first starts as a new user, `chown`
-its `basic_memory_home` volume to that user.
-
-The first visit shows a certificate warning, because the certificate is self-signed. Accept
-it once per browser. Then open `/config/vaults/kb` as the vault; its `.obsidian/` settings
-come with it.
-
-<Callout type="warn" title="Treat the login as root access">
-  The web desktop includes a terminal with passwordless `sudo`. Anyone who gets past the
-  login is root in that container and can rewrite every note. Keep it on the LAN and never
-  route it through the tunnel.
-</Callout>
-
-It needs HTTPS because the browser features the stream uses only work over a secure
-connection. Plain HTTP on 3000 is left unpublished for that reason, which also keeps it clear
-of Langfuse's port 3000.
-
 ## Backups
 
 None. Langfuse has no high availability either. What matters is the
-`langfuse_postgres_data` and `langfuse_clickhouse_data` volumes, plus `kb/`. The
-`obsidian_config` volume only holds app settings and can be recreated.
+`langfuse_postgres_data` and `langfuse_clickhouse_data` volumes, plus `kb/`.
 
 ## Pins
 

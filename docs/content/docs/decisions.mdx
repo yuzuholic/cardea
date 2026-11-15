@@ -12,7 +12,7 @@ column heading to sort.
       title: 'Claude Code as the agent',
       area: 'Agent',
       status: 'Adopted',
-      why: <>It fixed several open problems at once: Langfuse has a first-party plugin for it, Plannotator and herdr support it directly, existing skills keep working, and Ruler is no longer needed. The cost is model choice: Claude Code only runs Claude models.</>,
+      why: <>It fixed several open problems at once: Langfuse has a first-party plugin for it, herdr supports it directly, existing skills keep working, and Ruler is no longer needed. The cost is model choice: Claude Code only runs Claude models.</>,
     },
     {
       title: 'OpenCode',
@@ -31,6 +31,12 @@ column heading to sort.
       area: 'Rules',
       status: 'Adopted',
       why: <><code>claude/CLAUDE.md</code> is linked to <code>~/.claude/CLAUDE.md</code>, so editing it in the repo changes every session. It only holds machine-level rules: how to communicate and work, where things live, the default stack, memory, isolation and secrets. Rules for one project, such as an app's architecture or naming, live in that project's repo.</>,
+    },
+    {
+      title: 'Langfuse tags each session with its agent',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>Each herdr pane is created with <code>CC_LANGFUSE_TRACE_TAGS=agent:cardea:&lt;agent&gt;</code>, a setting the Langfuse plugin supports, so traces can be compared per agent, and with <code>LANGFUSE_TRACING_ENVIRONMENT=agent-&lt;agent&gt;</code> too, because Langfuse charts break down by environment but not cleanly by tag; the plugin ignores Claude Code's own <code>agent_type</code>, and Agent-tool subagents already carry their type in span metadata; hand-started sessions get the label through the shell profile, not <code>settings.json</code> (whose <code>env</code> would relabel every pane), and subagents through a fixed Agent description.</>,
     },
     {
       title: 'One Cardea plugin for skills and agents',
@@ -54,7 +60,7 @@ column heading to sort.
       title: 'Two agent types: orchestrator and implementer',
       area: 'Agent',
       status: 'Adopted',
-      why: <>The planning and the review happen on Opus, where they matter; the bulk of the edits run cheaply on Sonnet at low effort, because the brief already carries the thinking. Inside herdr each implementer gets its own tab, so every one of them stays visible and you can step in.</>,
+      why: <>The planning and the review happen on Opus, where they matter; the bulk of the edits run cheaply on Sonnet at low effort, because the brief already carries the thinking. Inside herdr each implementer gets its own pane in the right-hand column, so every one of them stays visible and you can step in.</>,
     },
     {
       title: 'The orchestrator edits only one-off, non-product files',
@@ -78,7 +84,7 @@ column heading to sort.
       title: 'Permission denials go to the user',
       area: 'Agent',
       status: 'Adopted',
-      why: <>An implementer's permission denial is brought to the user with the options: add an allow rule for that exact command, or approve it in the implementer's own tab. The orchestrator never runs the denied command itself, since that would bypass the user's permission decision. An approval the user gives the orchestrator reaches an implementer as a message from another agent, which the auto-mode permission check rightly does not treat as the user's permission. When a command depends on an allow rule, the brief gives its exact allow-listed spelling; a denied implementer reports the denial verbatim and never retries with another spelling or tool. Allow rules for a project's sanctioned commands live in its git-ignored <code>.claude/settings.local.json</code> and are added only with the user's explicit yes.</>,
+      why: <>An implementer's permission denial is brought to the user with the options: add an allow rule for that exact command, or approve it in the implementer's own pane. The orchestrator never runs the denied command itself, since that would bypass the user's permission decision. An approval the user gives the orchestrator reaches an implementer as a message from another agent, which the auto-mode permission check rightly does not treat as the user's permission. When a command depends on an allow rule, the brief gives its exact allow-listed spelling; a denied implementer reports the denial verbatim and never retries with another spelling or tool. Allow rules for a project's sanctioned commands live in its git-ignored <code>.claude/settings.local.json</code> and are added only with the user's explicit yes.</>,
     },
     {
       title: 'Every implementer has a time budget',
@@ -89,14 +95,14 @@ column heading to sort.
     {
       title: 'One tab per implementer',
       area: 'Agent',
-      status: 'Adopted',
-      why: <>Inside herdr each implementer opens in a new tab of the current workspace, named <code>impl-&lt;task&gt;</code>, without taking focus. Split panes become unusable past about three. A split for one or two, a separate workspace per batch, and splits for everything were considered.</>,
+      status: 'Replaced',
+      why: <>Replaced by two columns in one tab: the orchestrator on the left and every implementer a pane in the right-hand column. The tab per implementer gave each task its own named tab, <code>impl-&lt;task&gt;</code>, but spread a batch over many tabs.</>,
     },
     {
       title: 'A worktree when a task needs one',
       area: 'Agent',
       status: 'Adopted',
-      why: <>The orchestrator gives a task its own git worktree and branch when it changes files alongside other implementers or builds an app; read-only tasks and a lone small change run in the user's checkout. herdr worktree workspaces would mean a workspace per task. container-use runs Linux containers, which cannot run Xcode or the simulator.</>,
+      why: <>The orchestrator gives a task its own git worktree and branch when it changes files alongside other implementers or builds an app; read-only tasks and a lone small change run in the user's checkout. herdr worktree workspaces would mean a workspace per task. Worktrees also keep Xcode and the simulator available, which Linux containers cannot offer.</>,
     },
     {
       title: 'Land staged diffs, one at a time, under a lock',
@@ -121,12 +127,6 @@ column heading to sort.
       area: 'Agent',
       status: 'Adopted',
       why: <>Each task deletes only its own simulator clone. Implementers run tests with <code>-parallel-testing-enabled NO</code>, so no shared test clones exist for one task's cleanup to break another's run. When a batch that used a simulator ends, unavailable simulators are deleted and the freed space is reported.</>,
-    },
-    {
-      title: 'Plannotator for plans with several implementers',
-      area: 'Agent',
-      status: 'Adopted',
-      why: <>A plan with two or more implementers is reviewed in Plannotator before anything starts; a single task is stated in chat and starts. Reviewing every plan, and also reviewing the landed diff, were considered too heavy for small jobs.</>,
     },
     {
       title: 'The orchestrator keeps the graphify map fresh',
@@ -219,6 +219,12 @@ column heading to sort.
       why: <>It syncs rules across several agents. With one agent, a symlinked <code>CLAUDE.md</code> does the job.</>,
     },
     {
+      title: 'Hosted Obsidian',
+      area: 'Notes',
+      status: 'Removed',
+      why: <>It went unused. The vault is read in Obsidian on the Mac, so a browser-streamed desktop app on the NAS only added a container, credentials and a port. Decided 2026-11-15.</>,
+    },
+    {
       title: 'Blank lines around blocks',
       area: 'Rules',
       status: 'Adopted',
@@ -303,6 +309,24 @@ column heading to sort.
       why: <>It read and edited code by symbol through a language server, but gave no benefit in practice.</>,
     },
     {
+      title: 'The recsys skill',
+      area: 'Tools',
+      status: 'Removed',
+      why: <>It served one proof-of-concept project, not the general setup. Decided 2026-11-15.</>,
+    },
+    {
+      title: 'Plannotator',
+      area: 'Tools',
+      status: 'Removed',
+      why: <>Plan review in the browser went unused; plans are approved in chat.</>,
+    },
+    {
+      title: 'container-use',
+      area: 'Tools',
+      status: 'Removed',
+      why: <>Linux containers can't run Xcode or the simulator, and most work here is iOS; worktrees already isolate parallel work.</>,
+    },
+    {
       title: 'Script files instead of nested shell commands',
       area: 'Rules',
       status: 'Adopted',
@@ -318,7 +342,7 @@ column heading to sort.
       title: 'Core set on Windows',
       area: 'Install',
       status: 'Adopted',
-      why: <>It installs the global rules, the tldr and baby skills, the cardea plugin, the basic-memory MCP server, the marketplace plugins except apple-skills, and the marimo and graphify skills. plannotator and langfuse are left out because they need curl-piped binaries or <code>.env</code> setup. <code>uv</code> is required because graphify uses it.</>,
+      why: <>It installs the global rules, the tldr and baby skills, the cardea plugin, the basic-memory MCP server, the marketplace plugins except apple-skills, and the marimo and graphify skills. langfuse is left out because it needs <code>.env</code> setup. <code>uv</code> is required because graphify uses it.</>,
     },
     {
       title: 'Symlinks on Windows, with Developer Mode',
@@ -342,7 +366,7 @@ column heading to sort.
       title: 'App copy states things outright',
       area: 'Rules',
       status: 'Adopted',
-      why: <>Copy that read as machine-written came from loose verbs such as "stays", not from particular words, so the <code>app-copy</code> skill uses a substitution test instead of a banned list: a loose verb is replaced with "is", "is not" or the actual operation when that is more exact. It replaces the changelog's "slightly warm" voice, and the pre-commit audit applies it when a project has no copy rules of its own. Decided 2026-11-10.</>,
+      why: <>Copy that read as machine-written came from loose verbs such as "stays", not from particular words, so the <code>ux-writing</code> skill (named <code>app-copy</code> until 2026-11-15) uses a substitution test instead of a banned list: a loose verb is replaced with "is", "is not" or the actual operation when that is more exact. It replaces the changelog's "slightly warm" voice, and the pre-commit audit applies it when a project has no copy rules of its own. Decided 2026-11-10.</>,
     },
     {
       title: 'Hand off to a fresh session before autocompact',
@@ -417,10 +441,46 @@ column heading to sort.
       why: <>The first end-to-end run passed but stumbled four times, and each now has a fix. The skill's gate checks <code>command -v playwright-cli</code> for a web reference and stops with the install command. The describer opens <code>playwright-cli</code> with <code>--browser=chromium</code>, because its default is Google Chrome, which <code>install.sh</code> does not install; managing a global setting for it was rejected as new scaffolding. The plan adds <code>.blind/</code> to the worktree's <code>info/exclude</code> so <code>git add -A</code> cannot stage the rubric. The orchestrator treats the prompt-box suggestion in <code>herdr agent read</code> output as Claude Code's, not the user's. The plan also asks for a reference whose look is its own, with sibling pages blocked, since the first run's reference shared its theme with every docs page. Decided 2026-11-14.</>,
     },
     {
+      title: 'A fixed NAS address, not truenas.local',
+      area: 'Install',
+      status: 'Adopted',
+      why: <>Names ending in <code>.local</code> resolve over mDNS, which stalled Basic Memory and Langfuse calls for 2-4 s now and then; by IP no call took more than 0.24 s. The repo defaults stay <code>truenas.local</code> so no personal address enters it, and <code>install.sh</code> warns about <code>.local</code> addresses so the user's own <code>.env</code> can hold the fixed one.</>,
+    },
+    {
+      title: 'Two columns in herdr',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>The orchestrator keeps the left column; every implementer is a pane in one right-hand column, split down from it, at most five, and closes when its task lands. One tab keeps the whole batch in view without opening a tab per task.</>,
+    },
+    {
+      title: 'House herdr rules in one skill',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>The layout, start lines and error handling were repeated in five files and had drifted. One skill beside the upstream <code>herdr</code> one keeps them in step, and the session hook names it in every herdr session. Decided 2026-11-15.</>,
+    },
+    {
+      title: 'A chuunibyou persona in chat',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>The chat voice follows a chuunibyou modelled on Rikka Takanashi and Fischl, replacing the Golden Princess; everything that leaves the chat stays formal, and terseness wins over the persona when a reply runs long.</>,
+    },
+    {
+      title: 'Every session starts as the orchestrator',
+      area: 'Agent',
+      status: 'Adopted',
+      why: <>The <code>agent</code> setting makes plain <code>claude</code> start as <code>cardea:orchestrator</code>; implementers override it with <code>--agent</code>, and the installer asks before setting it.</>,
+    },
+    {
       title: 'Public repository with history as is',
       area: 'Install',
       status: 'Adopted',
       why: <>The repository was made public without rewriting history. A pattern scan of all commits found no keys, tokens or passwords, and the <code>.env.example</code> files hold only blank values. Two commits keep a personal Gmail as author and one keeps a local Mac address; rewriting them was declined to keep commit IDs stable. Decided 2026-11-13.</>,
+    },
+    {
+      title: "AXe's official plugin replaces our skill",
+      area: 'Tools',
+      status: 'Adopted',
+      why: <>AXe 2.0's agent mode checks the target, sends the input and returns the settled screen, which replaces our workarounds for fire-and-forget taps, sleeps and coordinate taps. The official skill is maintained upstream, and our Xcode 27 gotchas are unverified on 2.0. Decided 2026-11-15.</>,
     },
     {
       title: 'Anti-slop skills and AI-detector humanizers',

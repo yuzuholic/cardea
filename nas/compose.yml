@@ -1,17 +1,11 @@
-# cardea, self-hosted: the whole lab stack as one service. put this file, a .env (from
-# .env.example) and kb/ in one folder on the NAS (/mnt/main/Docker/lab), then
-# `sudo docker compose up -d`.
 name: cardea
 
 services:
   cardea:
     image: yuzuholic/cardea:latest
     restart: unless-stopped
-    # long enough for the launcher to stop every service before docker kills it.
     stop_grace_period: 2m
 
-    # everything the stack reads. required values stop `docker compose up` here, on the
-    # NAS, with the name of what is missing.
     environment:
       # langfuse
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://truenas.local:3000}
@@ -26,22 +20,19 @@ services:
       REDIS_AUTH: ${REDIS_AUTH:?set REDIS_AUTH in .env}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
 
-      # obsidian
-      OBSIDIAN_USER: ${OBSIDIAN_USER:?set OBSIDIAN_USER in .env}
-      OBSIDIAN_PASSWORD: ${OBSIDIAN_PASSWORD:?set OBSIDIAN_PASSWORD in .env}
-
-      # who basic memory and obsidian run as; both must be able to write the notes.
+      # who basic memory runs as; it must be able to write the notes.
       BASIC_MEMORY_USER: ${BASIC_MEMORY_USER:-1000:1000}
-      OBSIDIAN_PUID: ${OBSIDIAN_PUID:-1000}
-      OBSIDIAN_PGID: ${OBSIDIAN_PGID:-1000}
 
       # optional: the cloudflare tunnel only starts when a token is set.
       CLOUDFLARE_TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+
+      # optional: the basic memory project made the default.
+      BASIC_MEMORY_DEFAULT_PROJECT: ${BASIC_MEMORY_DEFAULT_PROJECT:-}
 
     volumes:
       # the launcher drives the host's docker engine; this is root on the NAS.
       - /var/run/docker.sock:/var/run/docker.sock
 
       # the notes. the launcher only reads where this folder is on the NAS, then mounts it
-      # into basic memory and obsidian itself.
+      # into basic memory itself.
       - ./kb:/kb:ro
