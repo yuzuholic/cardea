@@ -23,14 +23,17 @@ jobs:
         working-directory: docs
     steps:
       - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6.1.1
+        with:
+          package_json_file: docs/package.json
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: docs/package-lock.json
-      - run: npm ci
+          cache: pnpm
+          cache-dependency-path: docs/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
       # github pages serves a project site under /<repo>
-      - run: npm run build
+      - run: pnpm build
         env:
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
       - uses: actions/upload-pages-artifact@v4

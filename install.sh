@@ -22,9 +22,9 @@ if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
   FANCY=1
   B=$(printf '\033[1m');  D=$(printf '\033[2m');  R=$(printf '\033[0m')
   GRN=$(printf '\033[32m'); YEL=$(printf '\033[33m')
-  RED=$(printf '\033[31m'); CYN=$(printf '\033[36m')
+  RED=$(printf '\033[31m'); BLU=$(printf '\033[34m')
 else
-  B=''; D=''; R=''; GRN=''; YEL=''; RED=''; CYN=''
+  B=''; D=''; R=''; GRN=''; YEL=''; RED=''; BLU=''
 fi
 
 # gum draws the ui when it is installed and there is a terminal to draw on. the printf
@@ -33,40 +33,47 @@ fi
 has_gum() {
   [ -n "$FANCY" ] && [ "${TERM:-dumb}" != dumb ] && command -v gum >/dev/null 2>&1
 }
-# cardea's palette (eva unit-01). gum drops to 256 colours where truecolor is missing.
-AMETHYST='#995CD0'; PLUMP='#5549B7'; INCHWORM='#8EDF5F'; MANDARIN='#EC7744'
+# cardea's palette (apple system colours). gum drops to 256 colours where truecolor is missing.
+ACCENT='#2997ff'; SUCCESS='#30d158'; WARNING='#ff9f0a'; FAILURE='#ff453a'
 # for $(...): gum leaves colour out when its output is not a terminal. callers put -- before
 # the text (it may start with a dash), and stdin is closed because gum style reads it when
 # the text is empty, and under curl | sh stdin is the rest of this script.
 paint() { CLICOLOR_FORCE=1 gum style "$@" < /dev/null; }
 
 banner() {
+  b_text='Installs Claude Code, its MCP servers and plugins, and their NAS services.'
   if has_gum; then
-    gum style --border rounded --border-foreground "$PLUMP" --padding '0 2' --margin '1 2' -- \
-      "$(paint --bold --foreground "$INCHWORM" -- Cardea)  $(paint --faint -- '·  the hinge the gate swings on')"
+    printf '\n  %s\n  %s\n' "$(paint --bold -- Cardea)" "$(paint --faint -- "$b_text")"
     return 0
   fi
-  printf '\n%s  ╭────────────────────────────────────────────╮%s\n' "$CYN" "$R"
-  printf '%s  │%s  %sCardea%s  %s·  the hinge the gate swings on%s   %s│%s\n' \
-    "$CYN" "$R" "$B" "$R" "$D" "$R" "$CYN" "$R"
-  printf '%s  ╰────────────────────────────────────────────╯%s\n\n' "$CYN" "$R"
+  printf '\n  %sCardea%s\n  %s%s%s\n' "$B" "$R" "$D" "$b_text" "$R"
 }
 step() {
-  if has_gum; then printf '\n%s %s\n' "$(paint --foreground "$AMETHYST" -- ▸)" "$(paint --bold -- "$1")"; return 0; fi
-  printf '\n%s▸ %s%s\n' "$B" "$1" "$R"
+  if has_gum; then printf '\n%s %s\n' "$(paint --foreground "$ACCENT" -- ▸)" "$(paint --bold -- "$1")"; return 0; fi
+  printf '\n%s%s▸%s %s%s%s\n' "$BLU" "$B" "$R" "$B" "$1" "$R"
 }
 # mark <gum colour> <glyph> <plain colour> <text>
 mark() {
   if has_gum; then printf '  %s %s\n' "$(paint --foreground "$1" -- "$2")" "$4"; return 0; fi
   printf '  %s%s%s %s\n' "$3" "$2" "$R" "$4"
 }
-ok()   { mark "$INCHWORM" '✓' "$GRN" "$1"; }
+N_OK=0; N_WARN=0; N_BAD=0; T0=$(date +%s)
+# what the summary lists at the end: one tab-separated "glyph, text, hint" record per line.
+TAB=$(printf '\t'); ITEMS=; MISSING=
+track() { ITEMS="$ITEMS$1$TAB$2$TAB${3:-}
+"; }
+ok()   { N_OK=$((N_OK + 1)); mark "$SUCCESS" '✓' "$GRN" "$1"; }
 info() {
   if has_gum; then printf '  %s\n' "$(paint --faint -- "· $1")"; return 0; fi
   printf '  %s·%s %s\n' "$D" "$R" "$1"
 }
-warn() { mark "$MANDARIN" '!' "$YEL" "$1"; }
-bad()  { mark 1 '✗' "$RED" "$1"; }
+# hint: a second line, faint and indented, for what to type.
+hint() {
+  if has_gum; then printf '      %s\n' "$(paint --faint -- "$1")"; return 0; fi
+  printf '      %s%s%s\n' "$D" "$1" "$R"
+}
+warn() { N_WARN=$((N_WARN + 1)); track '!' "$1" "${2:-}"; mark "$WARNING" '!' "$YEL" "$1"; [ -z "${2:-}" ] || hint "$2"; }
+bad()  { N_BAD=$((N_BAD + 1)); track '✗' "$1"; mark "$FAILURE" '✗' "$RED" "$1"; }
 die()  { printf '\n%scardea:%s %s\n' "$RED" "$R" "$*" >&2; exit 1; }
 
 # spin <title> <command...>: a spinner while it runs, its output shown only if it fails.
@@ -76,10 +83,136 @@ die()  { printf '\n%scardea:%s %s\n' "$RED" "$R" "$*" >&2; exit 1; }
 spin() {
   s_title="$1"; shift
   if has_gum; then
-    gum spin --spinner dot --spinner.foreground "$INCHWORM" --title " $s_title" --show-error -- "$@" < /dev/null
+    gum spin --spinner dot --spinner.foreground "$ACCENT" --title " $s_title" --show-error -- "$@" < /dev/null
   else
     info "$s_title"; "$@"
   fi
+}
+
+# --- jobs ------------------------------------------------------------------
+# independent installs run side by side. job <label> <function> starts the function in its own
+# process group with its output in a log and stdin closed; await_jobs shows them, one line each:
+# a board redrawn in place under gum, one line per finished job otherwise.
+JOBDIR=; JOBS=; NJOB=0; JOB_FAILS=0; FAILED_LABELS=; HIDDEN=
+
+job() {
+  j_label="$1"; shift
+  [ -n "$JOBDIR" ] || JOBDIR=$(mktemp -d)
+  NJOB=$((NJOB + 1)); j_id=j$NJOB
+  set -m
+  (
+    j_start=$(date +%s)
+    "$@" > "$JOBDIR/$j_id.log" 2>&1 < /dev/null && j_rc=0 || j_rc=$?
+    echo "$j_rc $(( $(date +%s) - j_start ))" > "$JOBDIR/$j_id.tmp" && mv "$JOBDIR/$j_id.tmp" "$JOBDIR/$j_id.done"
+  ) &
+  j_pid=$!
+  set +m
+  eval "J_PID_$j_id=$j_pid; J_LABEL_$j_id=\$j_label; J_AT_$j_id=$(date +%s)"
+  JOBS="$JOBS $j_id"
+}
+
+# the escape gum puts before styled text, so the board colours a line without calling gum.
+tint() { t_s=$(paint "$@" -- X); printf '%s' "${t_s%%X*}"; }
+
+# a job whose function fails stops there, so jobs chain with || and return a status of their own.
+await_jobs() {
+  [ -n "$JOBS" ] || return 0
+  a_board=; has_gum && a_board=1
+  a_frame=0; a_seen=' '; a_drawn=
+  info "running $NJOB jobs in parallel"
+  if [ -n "$a_board" ]; then
+    a_ok=$(tint --foreground "$SUCCESS"); a_bad=$(tint --foreground "$FAILURE")
+    a_run=$(tint --foreground "$ACCENT"); a_dim=$(tint --faint)
+    printf '\033[?25l'; HIDDEN=1
+  fi
+  while :; do
+    a_left=0; a_now=$(date +%s)
+    [ -z "$a_drawn" ] || [ -z "$a_board" ] || printf '\033[%dA' "$NJOB"
+    for a_id in $JOBS; do
+      eval "a_label=\$J_LABEL_$a_id; a_at=\$J_AT_$a_id"
+      a_secs=$((a_now - a_at)); a_g=
+      if [ -f "$JOBDIR/$a_id.done" ]; then
+        read -r a_rc a_secs < "$JOBDIR/$a_id.done"
+        # a time only means something once it is long enough to notice.
+        case "$a_seen" in
+          *" $a_id "*) ;;
+          *)
+            a_seen="$a_seen$a_id "
+            if [ "$a_rc" -eq 0 ]; then
+              if [ -n "$a_board" ]; then N_OK=$((N_OK + 1)); elif [ "$a_secs" -ge 3 ]; then ok "$a_label (${a_secs}s)"; else ok "$a_label"; fi
+            else
+              JOB_FAILS=$((JOB_FAILS + 1)); FAILED_LABELS="$FAILED_LABELS|$a_label|"
+              if [ -n "$a_board" ]; then N_BAD=$((N_BAD + 1)); track '✗' "$a_label failed"; else bad "$a_label failed"; fi
+            fi ;;
+        esac
+      else
+        a_left=$((a_left + 1))
+      fi
+      [ -n "$a_board" ] || continue
+      if [ ! -f "$JOBDIR/$a_id.done" ]; then
+        case $((a_frame % 10)) in
+          0) a_g='⠋' ;; 1) a_g='⠙' ;; 2) a_g='⠹' ;; 3) a_g='⠸' ;; 4) a_g='⠼' ;;
+          5) a_g='⠴' ;; 6) a_g='⠦' ;; 7) a_g='⠧' ;; 8) a_g='⠇' ;; *) a_g='⠏' ;;
+        esac
+        a_c=$a_run
+      elif [ "$a_rc" -eq 0 ]; then a_g='✓'; a_c=$a_ok
+      else a_g='✗'; a_c=$a_bad; fi
+      if [ "$a_secs" -ge 3 ]; then a_t="${a_secs}s"; else a_t=; fi
+      printf '\033[2K  %s%s%s %-34s %s%5s%s\n' "$a_c" "$a_g" "$R" "$a_label" "$a_dim" "$a_t" "$R"
+    done
+    a_drawn=1; a_frame=$((a_frame + 1))
+    [ "$a_left" -gt 0 ] || break
+    sleep 0.1
+  done
+  [ -z "$a_board" ] || { printf '\033[?25h'; HIDDEN=; }
+  for a_id in $JOBS; do
+    eval "a_pid=\$J_PID_$a_id"
+    wait "$a_pid" 2>/dev/null || true
+    read -r a_rc a_secs < "$JOBDIR/$a_id.done"
+    [ "$a_rc" -ne 0 ] || continue
+    eval "a_label=\$J_LABEL_$a_id"
+    info "$a_label: last lines of $JOBDIR/$a_id.log"
+    tail -n 12 "$JOBDIR/$a_id.log" | sed 's/^/      /'
+  done
+  JOBS=
+}
+
+stop_jobs() {
+  for x_id in $JOBS; do
+    [ ! -f "$JOBDIR/$x_id.done" ] || continue
+    eval "x_pid=\$J_PID_$x_id"
+    kill -TERM -- "-$x_pid" 2>/dev/null || kill -TERM "$x_pid" 2>/dev/null || true
+  done
+}
+# ctrl-c ends the run, which stops what is still running; logs are kept only after a failure.
+leave() {
+  stop_jobs
+  [ -z "$HIDDEN" ] || printf '\033[?25h'
+  [ -z "$JOBDIR" ] || [ "$JOB_FAILS" -gt 0 ] || rm -rf "$JOBDIR"
+}
+trap leave EXIT
+trap 'exit 130' INT TERM HUP
+
+# how the run went, then what needs doing: every failure and every warning, one line each.
+summary() {
+  s_secs=$(( $(date +%s) - T0 ))
+  s_w=warnings; [ "$N_WARN" -ne 1 ] || s_w=warning
+  if has_gum; then
+    printf '\n  %s  %s  %s  %s\n' "$(paint --foreground "$SUCCESS" -- "✓ $N_OK ok")" \
+      "$(paint --foreground "$WARNING" -- "! $N_WARN $s_w")" "$(paint --foreground "$FAILURE" -- "✗ $N_BAD failed")" \
+      "$(paint --faint -- "· ${s_secs}s")"
+  else
+    printf '\n  %s✓ %s ok%s  %s! %s %s%s  %s✗ %s failed%s  %s· %ss%s\n' "$GRN" "$N_OK" "$R" "$YEL" "$N_WARN" "$s_w" "$R" \
+      "$RED" "$N_BAD" "$R" "$D" "$s_secs" "$R"
+  fi
+  [ -z "$MISSING" ] || mark "$FAILURE" '✗' "$RED" "not installed: $MISSING"
+  while IFS="$TAB" read -r s_glyph s_text s_hint; do
+    [ -n "$s_glyph" ] || continue
+    if [ "$s_glyph" = '!' ]; then mark "$WARNING" '!' "$YEL" "$s_text"; else mark "$FAILURE" '✗' "$RED" "$s_text"; fi
+    [ -z "$s_hint" ] || hint "$s_hint"
+  done <<SUMMARY
+$ITEMS
+SUMMARY
 }
 
 # --- args ------------------------------------------------------------------
@@ -117,7 +250,7 @@ fi
 cd "$REPO_DIR"
 ENV_FILE="$REPO_DIR/.env"
 # the user-scope MCP servers cardea owns; anything else in claude code is left alone.
-MCP_NAMES='container-use|xcodebuild|swiftlens|xcode|basic-memory'
+MCP_NAMES='container-use|xcodebuild|swiftlens|xcode|basic-memory'; MCP_LIST=
 
 # --- probes ----------------------------------------------------------------
 # any http status at all means something answered. an MCP endpoint may well reply
@@ -190,16 +323,33 @@ probe_http() {
   esac
 }
 
+# a missing required tool fails the run; the summary names them together. an optional one is
+# only noted.
 probe_tool() {
   name="$1"; label="${2:-$1}"
-  if command -v "$name" >/dev/null 2>&1; then ok "$label"; else bad "$label — not installed"; fi
+  if command -v "$name" >/dev/null 2>&1; then ok "$label"; return 0; fi
+  if [ "${3:-}" = optional ]; then
+    info "$label — optional, not installed"
+    return 0
+  fi
+  N_BAD=$((N_BAD + 1)); MISSING="${MISSING:+$MISSING, }$name"
+  mark "$FAILURE" '✗' "$RED" "$label — not installed"
 }
 
 run_checks() {
   step "tools"
-  for t in brew git docker claude herdr uv uvx playwright-cli container-use xcode-build-server plannotator; do
+  for t in brew git claude herdr uv uvx pnpm gh jq playwright-cli plannotator; do
     probe_tool "$t"
   done
+  # the isolation and iOS extras.
+  for t in docker container-use xcode-build-server; do
+    probe_tool "$t" "$t" optional
+  done
+  # graphify and plannotator install into ~/.local/bin, which a stock shell profile leaves off PATH.
+  case ":$PATH:" in
+    *":$HOME/.local/bin:"*) ;;
+    *) warn "~/.local/bin is not on PATH" 'export PATH="$HOME/.local/bin:$PATH"' ;;
+  esac
   # an exported key makes claude code bill the api instead of using the subscription login.
   [ -n "${ANTHROPIC_API_KEY:-}" ] && warn "ANTHROPIC_API_KEY is set — claude code will use it instead of your subscription"
   if [ -d /Applications/Xcode.app ]; then
@@ -208,7 +358,7 @@ run_checks() {
     bad "Xcode — not found (xcrun mcpbridge needs 26.3+, running)"
   fi
   if command -v docker >/dev/null 2>&1; then
-    docker info >/dev/null 2>&1 && ok "docker daemon running" || bad "docker installed but daemon not running (container-use needs it)"
+    docker info >/dev/null 2>&1 && ok "docker daemon running" || warn "docker is installed but its daemon is not running" "open OrbStack (container-use needs it)"
   fi
 
   step "services"
@@ -218,14 +368,31 @@ run_checks() {
 
   if command -v claude >/dev/null 2>&1; then
     step "claude code mcp servers"
-    # claude mcp list health-checks every server; show only the ones cardea registers.
-    claude mcp list 2>/dev/null | grep -E "^($MCP_NAMES):" | sed 's/^/  /' || warn "none registered yet"
+    # claude mcp list health-checks every server; show only the ones cardea registers. the install
+    # run has already asked once, and keeps the answer.
+    [ -n "$MCP_LIST" ] || MCP_LIST=$(claude mcp list 2>/dev/null || true)
+    c_found=
+    while IFS= read -r c_line; do
+      c_name=${c_line%%:*}
+      case "|$MCP_NAMES|" in *"|$c_name|"*) ;; *) continue ;; esac
+      c_found=1
+      case "$c_line" in
+        *Connected*) ok "$c_name — connected" ;;
+        *Failed*|*✗*) bad "$c_name — failed to connect" ;;
+        *) warn "$c_name — ${c_line##* - }" ;;
+      esac
+    done <<MCPLIST
+$MCP_LIST
+MCPLIST
+    [ -n "$c_found" ] || warn "no MCP servers registered yet"
   fi
 }
 
 if [ -n "$CHECK_ONLY" ]; then
   run_checks
+  summary
   printf '\n'
+  [ -z "$MISSING" ] || exit 1
   exit 0
 fi
 
@@ -236,15 +403,117 @@ if command -v brew >/dev/null 2>&1; then
   if brew trust --help >/dev/null 2>&1; then
     sed -n 's/^tap "\(.*\)"/\1/p' "$REPO_DIR/Brewfile" | xargs brew trust --tap
   fi
-  # not piped: a pipe would report sed's exit status, not brew's.
-  if spin "applying the Brewfile (can take a few minutes)" brew bundle --file="$REPO_DIR/Brewfile"; then
+  # brew's full output goes to a log; a failure shows only its error lines.
+  BREW_LOG=$(mktemp -t cardea-brew)
+  if spin "applying the Brewfile (can take a few minutes)" sh -c 'brew bundle --file="$1" > "$2" 2>&1' sh "$REPO_DIR/Brewfile" "$BREW_LOG"; then
     ok "Brewfile applied"
+    rm -f "$BREW_LOG"
   else
-    bad "brew bundle failed — see above; the checks at the end show what is missing"
+    bad "brew bundle failed — the checks at the end show what is missing"
+    grep -E '^Error:|failed!?$' "$BREW_LOG" | sed 's/^/      /'
+    info "full log: $BREW_LOG"
   fi
 else
   warn "homebrew not found — skipping Brewfile, then rerun this script"
 fi
+
+# --- claude code -----------------------------------------------------------
+step "claude code"
+# installed by the Brewfile (claude-code, the stable channel). a native install in ~/.local/bin would
+# shadow it on PATH and update itself out of step, so flag one if it is there.
+[ -x "$HOME/.local/bin/claude" ] && warn "a native claude install in ~/.local/bin shadows homebrew's — remove it"
+command -v claude >/dev/null 2>&1 || die "claude code is not installed — the Brewfile step should have done it"
+ok "claude $(claude --version 2>/dev/null | cut -d' ' -f1)"
+
+# the task tools (TaskCreate, TaskList, TaskUpdate) are off by default on newer models. claude
+# has no command to set a settings env entry, so merge it in; an unreadable file is left alone.
+if python3 -c '
+import json, os, sys
+p = sys.argv[1]
+d = json.load(open(p)) if os.path.exists(p) else {}
+env = d.setdefault("env", {})
+if env.get("CLAUDE_CODE_ENABLE_TODO_TOOLS") != "1":
+    env["CLAUDE_CODE_ENABLE_TODO_TOOLS"] = "1"
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    json.dump(d, open(p, "w"), indent=2)
+' "$HOME/.claude/settings.json" 2>/dev/null; then
+  ok "task list on (CLAUDE_CODE_ENABLE_TODO_TOOLS)"
+else
+  warn "could not set CLAUDE_CODE_ENABLE_TODO_TOOLS in ~/.claude/settings.json — add it to \"env\" by hand"
+fi
+
+# herdr writes its hook into the same settings.json the plugin installs write to, so it goes
+# first and alone.
+if command -v herdr >/dev/null 2>&1; then
+  spin "installing herdr's claude integration" herdr integration install claude >/dev/null \
+    && ok "herdr integration" || warn "herdr integration failed — run it by hand"
+fi
+
+# --- parallel installs -----------------------------------------------------
+# what follows needs no answers, so it starts now and runs while the prompts are on screen. the
+# claude jobs write ~/.claude.json, settings.json and the plugin caches at the same time; nine
+# concurrent installs and registrations against the real claude lost no write, so they run
+# side by side too.
+plugin() {
+  p_id="$1"; p_src="$2"
+  if claude plugin list --json 2>/dev/null | grep -q "\"id\": \"$p_id\""; then
+    # installed but switched off still counts as missing from the setup.
+    claude plugin enable "$p_id" >/dev/null 2>&1 || true
+    # the install is a cached copy, so a rerun refreshes it.
+    claude plugin update "$p_id"
+  else
+    claude plugin install "${p_id%@*}" --marketplace "$p_src" -y
+  fi
+}
+
+# plannotator's plugin only wires hooks; they call the plannotator binary, installed bare.
+job_plannotator() {
+  j_ok=0
+  if ! command -v plannotator >/dev/null 2>&1; then
+    curl -fsSL https://plannotator.ai/install.sh | bash -s -- --version v0.28.31 --minimal --non-interactive || j_ok=1
+  fi
+  plugin plannotator@plannotator backnotprop/plannotator || j_ok=1
+  return "$j_ok"
+}
+# herdr, graphify and playwright-cli ship their own skills, generated from the installed
+# versions; marimo and langfuse publish theirs in git repos.
+vendor() { sh "$REPO_DIR/scripts/vendor-skills.sh" "$HOME/.claude/skills" "$@"; }
+job_graphify() {
+  command -v uv >/dev/null 2>&1 || { echo "uv not found"; return 1; }
+  uv tool install graphifyy==0.9.88 || return 1
+  # uv puts the binary in ~/.local/bin, which the skill step needs on PATH.
+  PATH="$PATH:$HOME/.local/bin" vendor graphify
+}
+job_playwright() {
+  command -v npm >/dev/null 2>&1 || { echo "npm not found"; return 1; }
+  npm install -g @playwright/cli@0.1.24 || return 1
+  j_ok=0
+  vendor playwright-cli || j_ok=1
+  playwright-cli install-browser chromium || j_ok=1
+  return "$j_ok"
+}
+job_skills() { vendor herdr marimo-notebook langfuse; }
+job_plugin() { plugin "$@"; }
+
+job "plannotator" job_plannotator
+job "graphify" job_graphify
+job "playwright-cli + chromium" job_playwright
+job "herdr, marimo, langfuse skills" job_skills
+# every plugin the run installs, "id source" per line. plannotator and langfuse have jobs of their own.
+PLUGIN_SPECS="plannotator@plannotator backnotprop/plannotator
+langfuse-observability@langfuse-observability langfuse/Claude-Observability-Plugin
+cardea@cardea $REPO_DIR
+superpowers@superpowers-marketplace obra/superpowers-marketplace
+ponytail@ponytail DietrichGebert/ponytail
+apple-skills@apple-skills Prisma-Labs-Dev/apple-skills
+cloudflare@cloudflare cloudflare/skills
+humanizer@humanizer blader/humanizer"
+while read -r s_id s_src; do
+  case "$s_id" in plannotator@*|langfuse-observability@*) continue ;; esac
+  job "plugin ${s_id%@*}" job_plugin "$s_id" "$s_src"
+done <<PLUGINS
+$PLUGIN_SPECS
+PLUGINS
 
 # --- env -------------------------------------------------------------------
 # load whatever is already there so re-runs offer the current value as the default.
@@ -254,7 +523,7 @@ if [ -f "$ENV_FILE" ]; then
   info "editing existing .env — press enter to keep a value"
 elif [ -z "$PROMPT" ]; then
   cp "$REPO_DIR/.env.example" "$ENV_FILE"
-  warn ".env created from the example with placeholder values"
+  FROM_EXAMPLE=1
   [ -n "${NOTTY:-}" ] && info "no terminal available, so nothing was asked"
 fi
 
@@ -265,8 +534,8 @@ fi
 gum_read() {
   g_ph="$1"; g_label="$2"; shift 2
   g_rc=0
-  reply=$(gum input "$@" --prompt "  ${g_label}› " --prompt.foreground "$AMETHYST" \
-    --cursor.foreground "$INCHWORM" --placeholder "$g_ph" --no-show-help < /dev/tty 2>/dev/tty) || g_rc=$?
+  reply=$(gum input "$@" --prompt "  ${g_label}› " --prompt.foreground "$ACCENT" \
+    --cursor.foreground "$ACCENT" --placeholder "$g_ph" --no-show-help < /dev/tty 2>/dev/tty) || g_rc=$?
   # ctrl-c in gum is a keypress, not a signal; stop the run as a plain read would.
   [ "$g_rc" -ne 130 ] || { printf '\n' > /dev/tty; exit 130; }
   return 0
@@ -396,7 +665,7 @@ TMP_ENV="$ENV_FILE.$$"
 } > "$TMP_ENV"
 mv "$TMP_ENV" "$ENV_FILE"
 chmod 600 "$ENV_FILE"
-ok "wrote .env (mode 600)"
+if [ -n "${FROM_EXAMPLE:-}" ]; then warn ".env created with placeholder values (mode 600)"; else ok "wrote .env (mode 600)"; fi
 
 # --- linking ---------------------------------------------------------------
 step "links"
@@ -421,148 +690,117 @@ link "$REPO_DIR/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
 link "$REPO_DIR/claude/skills/tldr" "$HOME/.claude/skills/tldr"
 link "$REPO_DIR/claude/skills/baby" "$HOME/.claude/skills/baby"
 
-# --- claude code -----------------------------------------------------------
-step "claude code"
-# installed by the Brewfile (claude-code@latest). a native install in ~/.local/bin would
-# shadow it on PATH and update itself out of step, so flag one if it is there.
-[ -x "$HOME/.local/bin/claude" ] && warn "a native claude install in ~/.local/bin shadows homebrew's — remove it"
-command -v claude >/dev/null 2>&1 || die "claude code is not installed — the Brewfile step should have done it"
-ok "claude $(claude --version 2>/dev/null | cut -d' ' -f1)"
-
-# the task tools (TaskCreate, TaskList, TaskUpdate) are off by default on newer models. claude
-# has no command to set a settings env entry, so merge it in; an unreadable file is left alone.
-if python3 -c '
-import json, os, sys
-p = sys.argv[1]
-d = json.load(open(p)) if os.path.exists(p) else {}
-env = d.setdefault("env", {})
-if env.get("CLAUDE_CODE_ENABLE_TODO_TOOLS") != "1":
-    env["CLAUDE_CODE_ENABLE_TODO_TOOLS"] = "1"
-    os.makedirs(os.path.dirname(p), exist_ok=True)
-    json.dump(d, open(p, "w"), indent=2)
-' "$HOME/.claude/settings.json" 2>/dev/null; then
-  ok "task list on (CLAUDE_CODE_ENABLE_TODO_TOOLS)"
-else
-  warn "could not set CLAUDE_CODE_ENABLE_TODO_TOOLS in ~/.claude/settings.json — add it to \"env\" by hand"
-fi
-
-# user scope, so every project gets them. values are baked in from .env at install time;
-# rerun this script after changing .env. remove-then-add keeps it idempotent.
+# --- late jobs -------------------------------------------------------------
+# these bake in what the prompts just collected. cardea's own plugin is installed from this
+# checkout, which claude code reads in place, so edits here show up at the next session.
+# user scope, so every project gets the servers. rerun this script after changing .env;
+# remove-then-add keeps it idempotent.
+mcp_json() {
+  case "$1" in
+    container-use) echo '{"type":"stdio","command":"container-use","args":["stdio"]}' ;;
+    xcodebuild)    echo '{"type":"stdio","command":"npx","args":["-y","xcodebuildmcp@2.7.0","mcp"],"env":{"XCODEBUILDMCP_SENTRY_DISABLED":"true"}}' ;;
+    swiftlens)     echo '{"type":"stdio","command":"uvx","args":["swiftlens@0.2.14"]}' ;;
+    # a bare `xcrun mcpbridge` is the bridge; it only connects while xcode is running.
+    xcode)         echo '{"type":"stdio","command":"xcrun","args":["mcpbridge"]}' ;;
+    basic-memory)  printf '{"type":"http","url":"%s"}\n' "$BASIC_MEMORY_URL" ;;
+  esac
+}
 mcp() {
   claude mcp remove -s user "$1" >/dev/null 2>&1 || true
-  if claude mcp add-json -s user "$1" "$2" >/dev/null; then ok "mcp: $1"; else bad "mcp: $1 — could not register"; fi
+  claude mcp add-json -s user "$1" "$(mcp_json "$1")" >/dev/null && echo "mcp: $1" || { echo "mcp: $1 — could not register"; return 1; }
 }
-mcp container-use '{"type":"stdio","command":"container-use","args":["stdio"]}'
-mcp xcodebuild    '{"type":"stdio","command":"npx","args":["-y","xcodebuildmcp@2.7.0","mcp"],"env":{"XCODEBUILDMCP_SENTRY_DISABLED":"true"}}'
-mcp swiftlens     '{"type":"stdio","command":"uvx","args":["swiftlens@0.2.14"]}'
-# a bare `xcrun mcpbridge` is the bridge; it only connects while xcode is running.
-mcp xcode         '{"type":"stdio","command":"xcrun","args":["mcpbridge"]}'
-if [ -n "$BASIC_MEMORY_URL" ]; then
-  mcp basic-memory "{\"type\":\"http\",\"url\":\"$BASIC_MEMORY_URL\"}"
-else
-  claude mcp remove -s user basic-memory >/dev/null 2>&1 || true
-  info "mcp: basic-memory — no url in .env, skipped"
-fi
-
-plugin() {
-  id="$1"; p_src="$2"
-  if claude plugin list --json 2>/dev/null | grep -q "\"id\": \"$id\""; then
-    # installed but switched off still counts as missing from the setup.
-    claude plugin enable "$id" >/dev/null 2>&1 || true
-    # the install is a cached copy, so a rerun refreshes it.
-    if spin "updating plugin $id" claude plugin update "$id" >/dev/null; then ok "plugin: $id"; else bad "plugin: $id — update failed"; fi
-    return 0
+# the servers this run registers; basic memory only with a url.
+mcp_wanted() { echo "container-use xcodebuild swiftlens xcode${BASIC_MEMORY_URL:+ basic-memory}"; }
+job_mcp() {
+  j_ok=0
+  for j_name in container-use xcodebuild swiftlens xcode; do
+    mcp "$j_name" || j_ok=1
+  done
+  if [ -n "$BASIC_MEMORY_URL" ]; then
+    mcp basic-memory || j_ok=1
+  else
+    claude mcp remove -s user basic-memory >/dev/null 2>&1 || true
+    echo "mcp: basic-memory — no url in .env, skipped"
   fi
-  if spin "installing plugin $id" claude plugin install "${id%@*}" --marketplace "$p_src" -y >/dev/null; then ok "plugin: $id"; else bad "plugin: $id — install failed"; fi
+  return "$j_ok"
 }
-
-# plannotator's plugin only wires hooks; they call the plannotator binary, installed bare.
-if ! command -v plannotator >/dev/null 2>&1; then
-  spin "installing plannotator v0.28.31 (binary only)" sh -c \
-    'curl -fsSL https://plannotator.ai/install.sh | bash -s -- --version v0.28.31 --minimal --non-interactive' \
-    || warn "plannotator binary failed to install"
-fi
-plugin plannotator@plannotator backnotprop/plannotator
-
-plugin langfuse-observability@langfuse-observability langfuse/Claude-Observability-Plugin
-# point it at the NAS even without keys, so it never falls back to langfuse's own cloud.
-# stdin keeps the secret out of the process list.
-if [ -n "$LANGFUSE_HOST" ]; then
+job_langfuse() {
+  plugin langfuse-observability@langfuse-observability langfuse/Claude-Observability-Plugin || return 1
+  # point it at the NAS even without keys, so it never falls back to langfuse's own cloud.
+  # stdin keeps the secret out of the process list.
+  [ -n "$LANGFUSE_HOST" ] || return 0
   {
     printf '{"LANGFUSE_BASE_URL":"%s"' "$LANGFUSE_HOST"
     [ -n "$LANGFUSE_PUBLIC_KEY" ] && printf ',"LANGFUSE_PUBLIC_KEY":"%s"' "$LANGFUSE_PUBLIC_KEY"
     [ -n "$LANGFUSE_SECRET_KEY" ] && printf ',"LANGFUSE_SECRET_KEY":"%s"' "$LANGFUSE_SECRET_KEY"
     printf '}'
-  } | claude plugin configure langfuse-observability@langfuse-observability --values-stdin >/dev/null \
-    && ok "langfuse plugin → $LANGFUSE_HOST" || warn "langfuse plugin configure failed — run /plugin configure in claude"
-  [ -n "$LANGFUSE_PUBLIC_KEY" ] || info "no langfuse keys yet — tracing stays off until you add them and rerun"
-fi
+  } | claude plugin configure langfuse-observability@langfuse-observability --values-stdin \
+    && echo "langfuse plugin → $LANGFUSE_HOST" || { echo "langfuse plugin configure failed — run /plugin configure in claude"; return 1; }
+  [ -n "$LANGFUSE_PUBLIC_KEY" ] || echo "no langfuse keys yet — tracing stays off until you add them and rerun"
+}
+job "mcp servers" job_mcp
+job "plugin langfuse-observability" job_langfuse
 
-# cardea's own skills and agents. installed from this checkout, which claude code reads in
-# place, so edits here show up at the next session without reinstalling.
-plugin cardea@cardea "$REPO_DIR"
+# claude's own files are written by several jobs at once; read them back, and redo serially
+# whatever a concurrent write lost. a job that failed already said so, so it is not retried.
+verify_claude() {
+  v_list=$(claude plugin list --json 2>/dev/null || true)
+  while read -r v_id v_src; do
+    case "$v_id" in plannotator@*) v_label=plannotator ;; *) v_label="plugin ${v_id%@*}" ;; esac
+    case "$FAILED_LABELS" in *"|$v_label|"*) continue ;; esac
+    case "$v_list" in *"\"id\": \"$v_id\""*) continue ;; esac
+    plugin "$v_id" "$v_src" >/dev/null 2>&1 || true
+    if claude plugin list --json 2>/dev/null | grep -q "\"id\": \"$v_id\""; then
+      warn "plugin ${v_id%@*}: a concurrent write was lost and repaired"
+    else
+      JOB_FAILS=$((JOB_FAILS + 1)); bad "plugin ${v_id%@*}: not recorded, even after a retry"
+    fi
+  done <<VERIFY
+$PLUGIN_SPECS
+VERIFY
+  case "$FAILED_LABELS" in *"|mcp servers|"*) return 0 ;; esac
+  MCP_LIST=$(claude mcp list 2>/dev/null || true)
+  v_redo=
+  for v_name in $(mcp_wanted); do
+    printf '%s\n' "$MCP_LIST" | grep -q "^$v_name:" && continue
+    mcp "$v_name" >/dev/null 2>&1 || true
+    v_redo=1
+    if claude mcp list 2>/dev/null | grep -q "^$v_name:"; then
+      warn "mcp $v_name: a concurrent write was lost and repaired"
+    else
+      JOB_FAILS=$((JOB_FAILS + 1)); bad "mcp $v_name: not recorded, even after a retry"
+    fi
+  done
+  [ -z "$v_redo" ] || MCP_LIST=$(claude mcp list 2>/dev/null || true)
+}
 
-plugin superpowers@superpowers-marketplace obra/superpowers-marketplace
-plugin ponytail@ponytail DietrichGebert/ponytail
-plugin apple-skills@apple-skills Prisma-Labs-Dev/apple-skills
-plugin cloudflare@cloudflare cloudflare/skills
-plugin humanizer@humanizer blader/humanizer
-
-# --- herdr -----------------------------------------------------------------
-if command -v herdr >/dev/null 2>&1; then
-  step "herdr"
-  herdr integration install claude || warn "herdr integration failed — run it by hand"
-fi
-
-# --- vendored skills -------------------------------------------------------
-# herdr, graphify and playwright-cli ship their own skills, generated from the installed versions;
-# marimo and langfuse publish theirs in git repos.
-step "skills"
-if command -v uv >/dev/null 2>&1; then
-  spin "installing graphify 0.9.88" uv tool install graphifyy==0.9.88 >/dev/null \
-    || warn "graphify failed to install"
-fi
-if command -v npm >/dev/null 2>&1; then
-  spin "installing playwright-cli 0.1.24" npm install -g @playwright/cli@0.1.24 >/dev/null \
-    || warn "playwright-cli failed to install"
-  command -v playwright-cli >/dev/null 2>&1 \
-    && { spin "installing chromium for playwright-cli" playwright-cli install-browser chromium >/dev/null \
-         || warn "chromium failed to install"; }
-else
-  warn "npm not found, skipping playwright-cli"
-fi
-if sh "$REPO_DIR/scripts/vendor-skills.sh" "$HOME/.claude/skills" >/dev/null; then
-  ok "herdr, graphify, playwright-cli, marimo-notebook and langfuse skills"
-else
-  warn "a vendored skill could not be generated — run scripts/vendor-skills.sh to see why"
-fi
-
+step "installing"
+await_jobs
+verify_claude
 run_checks
+summary
 
 # --- next steps ------------------------------------------------------------
 if has_gum; then
-  gum style --border rounded --border-foreground "$AMETHYST" --padding '1 2' --margin '1 2' -- \
-    "$(paint --bold --foreground "$INCHWORM" -- 'Next')
-
-1. $(paint --bold -- 'claude auth login')
-   sign in with your claude subscription (interactive)
-2. per iOS project
-   $(paint --bold -- 'xcode-build-server config -project X.xcodeproj -scheme X')
-3. on the NAS, in /mnt/main/Docker/lab
-   $(paint --bold -- 'sudo docker compose up -d')
-   $(paint --faint -- 'https://yuzuholic.github.io/cardea/docs/nas')
-
-$(paint --faint -- 're-run anytime. ./install.sh --check probes without changing anything.')"
+  printf '\n  %s\n\n' "$(paint --bold --foreground "$ACCENT" -- 'Next')"
+  printf '  1. %s\n     sign in with your claude subscription (interactive)\n' "$(paint --bold -- 'claude auth login')"
+  printf '  2. per iOS project\n     %s\n' "$(paint --bold -- 'xcode-build-server config -project X.xcodeproj -scheme X')"
+  printf '  3. on the NAS, in /mnt/main/Docker/lab\n     %s\n     %s\n' "$(paint --bold -- 'sudo docker compose up -d')" \
+    "$(paint --faint -- 'https://yuzuholic.github.io/cardea/docs/nas')"
+  printf '\n  %s\n\n' "$(paint --faint -- 're-run anytime. ./install.sh --check probes without changing anything.')"
 else
-  printf '\n%s▸ next%s\n' "$B" "$R"
+  printf '\n  %s%sNext%s\n' "$BLU" "$B" "$R"
   cat <<EOF
   1. claude auth login                   sign in with your claude subscription (interactive)
-  2. per iOS project:                    xcode-build-server config -project X.xcodeproj -scheme X
-  3. on the NAS:                         sudo docker compose up -d in /mnt/main/Docker/lab
+  2. per iOS project                     xcode-build-server config -project X.xcodeproj -scheme X
+  3. on the NAS                          sudo docker compose up -d in /mnt/main/Docker/lab
                                          (see https://yuzuholic.github.io/cardea/docs/nas)
 
   re-run anytime. ${D}./install.sh --check${R} probes without changing anything.
 
 EOF
 fi
+
+# a failed job already showed its log, and a missing tool the summary; the exit status says so too.
+[ "$JOB_FAILS" -eq 0 ] && [ -z "$MISSING" ] || exit 1
 }

@@ -1,0 +1,88 @@
+---
+title: Agents
+description: The agents the Cardea plugin ships, who starts each and which model it runs on.
+---
+
+For a job with several parts, the plugin has an orchestrator and implementers. The
+orchestrator plans and checks; implementers make the changes. The orchestrator never writes
+feature or bug-fix code, only quick one-off edits such as a convention or a note, and an
+implementer never starts another agent. Both edit files with the Edit and Write tools, never
+with scripts.
+
+| Agent | What it is for | Started by | Model | Effort |
+|---|---|---|---|---|
+| `cardea:orchestrator` | Plans a multi-part task, hands each piece to an implementer, reviews what comes back and lands it | you | Opus&nbsp;5.5 | medium |
+| `cardea:implementer` | Makes one scoped change, runs the check that proves it and reports | you | Opus&nbsp;5.5 | medium |
+| `cardea:implementer` | The same, under an orchestrator | the orchestrator | Sonnet&nbsp;5.5 | low |
+| `cardea:describer` | Sees the reference UI in a [blind port](/docs/blind-port), writes the rubric and grades the rendered UI | the orchestrator, through `blind-port` | Opus&nbsp;5.5 | medium |
+| `cardea:reviewer` | Audits the code of a blind port, scores it and applies the fixes | the orchestrator, through `blind-port` | Opus&nbsp;5.5 | medium |
+| `cardea:panel-ux-designer` | Reviews a design for hierarchy, colour, redundancy, affordance and information architecture | the `panel` skill, or you | Sonnet | not set |
+| `cardea:panel-average-chud` | Reviews a design as an ordinary, non-technical user: clarity, confusion and anxiety | the `panel` skill, or you | Sonnet | not set |
+| `cardea:panel-power-user` | Reviews a design for efficiency, density, bulk actions, predictability and edge cases | the `panel` skill, or you | Sonnet | not set |
+
+The three panel agents are read-only: they can read and search files, nothing else. The
+`panel` skill puts a question to all three at once and merges their verdicts into one
+recommendation.
+
+Start the orchestrator or an implementer with its effort spelled out:
+
+```sh
+claude --agent cardea:orchestrator --effort medium
+claude --agent cardea:implementer --effort medium
+```
+
+## The orchestrator
+
+The orchestrator reads the code (starting from the graphify map when the repo has one) and
+splits the work into tasks one implementer can finish alone, at most five at once. A plan with
+two or more implementers opens in Plannotator for your approval; a single task starts straight
+away. Each implementer gets a brief with the goal, the files, the limits and the check that
+proves it worked. It makes the change, runs the check and reports what it changed, what it
+checked and what it left.
+
+The orchestrator never waits on an implementer in the foreground, so it can answer you while
+they work. A task that changes files alongside others, or builds an app, gets its own git
+worktree and branch; read-only tasks and a lone small change run in your checkout.
+Every task gets a time budget, shown as minutes and a due time (for example "25 min, due
+16:40") in the plan and the brief, and the background wait that tracks the implementer is armed
+with it as its timeout. On an overrun the orchestrator investigates before acting. An
+implementer waiting on a prompt goes to you. One still producing output gets a single extension
+of half its budget and a one-line note to you. One with no new output, or any second overrun,
+is stopped and reported to you with its last output, and you decide. Outside herdr it cannot
+look inside a running subagent, so an overrun goes straight to you. Each batch's final report
+lists budget against actual time per task, and the orchestrator appends those rows to the Basic
+Memory note `plans/<Project> Task Time Estimates.md` (the last 50 tasks, plus rules of thumb by
+kind of task) and reads it when planning. Cardea has no Basic Memory project, so for cardea the
+report is the only record.
+An implementer that is blocked or needs something comes first: at the start of every turn the
+orchestrator checks implementer messages and pane states and resolves any blocker before other
+topics, and a blocker that needs you leads its reply. A permission denial goes to you, with the
+options of adding an allow rule for that exact command or approving it in the implementer's own
+tab. The orchestrator never runs the denied command itself, and never answers an approval or
+permission prompt for you. When a command depends on an allow rule, the brief gives its exact
+allow-listed spelling, and a denied implementer reports the denial verbatim instead of retrying
+with another spelling or tool.
+Implementers stage their work and never commit. The orchestrator reviews each one, then lands
+it in your checkout as uncommitted changes, one at a time in the order they finish, under a
+per-repo lock that also keeps orchestrators in other sessions from landing at the same time.
+If a change no longer applies, or its check fails in your checkout, it stops and asks you.
+After landing, it removes the worktree, its build data, the branch, the tab and any simulator
+clone the task made. Saying `close impl-<task>` does the same at any time. When the batch is
+done and any task used a simulator, it deletes unavailable simulators and reports the disk space
+freed. It also refreshes the graphify map. Once the work is merged to main, it runs the
+`post-merge-sweep` skill, which also clears what crashed or restarted sessions left behind.
+
+**Inside herdr**, every implementer gets a tab of its own in your workspace, named
+`impl-<task>`, so you can watch it work and step in. The orchestrator opens the tab without
+taking your focus, starts the implementer in it, sends the brief and reads the result back. If
+an implementer stops on a question (trusting a folder, a permission, anything else), the
+orchestrator asks you; it never answers for you.
+
+**Outside herdr**, it starts implementers as ordinary background subagents instead, on Sonnet
+at low effort.
+
+## Blind port
+
+The orchestrator runs the `blind-port` skill for a UI feature that must match an existing web
+or Swift UI. It starts the describer and the reviewer; [Blind port](/docs/blind-port) covers
+how it works.

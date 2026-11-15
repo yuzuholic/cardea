@@ -1,5 +1,7 @@
 #!/bin/sh
 echo "playwright-cli $*" >> "$FAKE_LOG"
+# FAKE_DELAY=<seconds> makes the install take that long.
+[ -z "${FAKE_DELAY:-}" ] || sleep "$FAKE_DELAY"
 # `playwright-cli install --skills claude --global` writes its skill under HOME, like the real one.
 if [ "${1:-}" = install ]; then
   mkdir -p "$HOME/.claude/skills/playwright-cli"

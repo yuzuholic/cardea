@@ -234,7 +234,25 @@ column heading to sort.
       title: 'Vite or Astro before Next.js, and pnpm',
       area: 'Rules',
       status: 'Adopted',
-      why: <>New web projects start on Vite, or Astro for content sites. Next.js is kept for serious, web-only products that need it, because most projects at their scale do not need a full framework. pnpm is the package manager. Existing projects, such as this docs site on Next.js and npm, stay as they are unless moved on purpose.</>,
+      why: <>New web projects start on Vite, or Astro for content sites. Next.js is kept for serious, web-only products that need it, because most projects at their scale do not need a full framework. pnpm is the package manager. Existing projects stay as they are unless moved on purpose.</>,
+    },
+    {
+      title: 'pnpm for the docs site',
+      area: 'Docs',
+      status: 'Adopted',
+      why: <>The docs site uses pnpm, like every other web project here, instead of npm. Its lockfile is <code>pnpm-lock.yaml</code>, CI installs with <code>pnpm install --frozen-lockfile</code>, and <code>packageManager</code> in <code>docs/package.json</code> pins the version.</>,
+    },
+    {
+      title: 'Claude Code from the stable channel',
+      area: 'Install',
+      status: 'Adopted',
+      why: <>The <code>Brewfile</code> installs the <code>claude-code</code> cask, which follows Anthropic's stable channel, instead of <code>claude-code@latest</code>. Stable runs behind the newest release and skips releases with major regressions, and a broken release costs more on a machine running many agents than a short wait does. The two casks conflict, so a machine that already had <code>claude-code</code> failed <code>brew bundle</code> on every run. Decided 2026-11-15.</>,
+    },
+    {
+      title: 'Docs site styled after the iCloud web app',
+      area: 'Docs',
+      status: 'Adopted',
+      why: <>The docs use Apple's palette and system font, a slim top bar and a sticky row of page tabs instead of a sidebar, and iCloud-style cards on the home page. It replaces the Eva unit-01 palette and the star-field banner. The tabs follow the stack: Overview, Installation, Claude Code, Skills, Agents, MCP, Stack and Verification. Blind port, NAS and Decisions sit in a second row under their parent tab. Every page stays flat in <code>content/docs/</code>, so existing links keep working; the grouping lives in <code>lib/tabs.ts</code>. A design panel (UX designer, average user, power user) signed it off after seven rounds. Decided 2026-11-15.</>,
     },
     {
       title: 'Only generic skills and agents',

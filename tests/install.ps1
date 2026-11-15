@@ -73,6 +73,9 @@ function New-Stubs($Dir) {
     New-Stub $Dir 'py' @('@echo off', 'echo py %* >> "%FAKE_LOG%"') @('#!/bin/sh', 'echo "py $*" >> "$FAKE_LOG"')
     New-Stub $Dir 'uv' @('@echo off', 'echo uv %* >> "%FAKE_LOG%"') @('#!/bin/sh', 'echo "uv $*" >> "$FAKE_LOG"')
 
+    New-Stub $Dir 'pnpm' @('@echo off', 'echo pnpm %* >> "%FAKE_LOG%"') @('#!/bin/sh', 'echo "pnpm $*" >> "$FAKE_LOG"')
+    New-Stub $Dir 'gh' @('@echo off', 'echo gh %* >> "%FAKE_LOG%"') @('#!/bin/sh', 'echo "gh $*" >> "$FAKE_LOG"')
+
     New-Stub $Dir 'npm' @('@echo off', 'echo npm %* >> "%FAKE_LOG%"') @('#!/bin/sh', 'echo "npm $*" >> "$FAKE_LOG"')
 
     New-Stub $Dir 'playwright-cli' @(

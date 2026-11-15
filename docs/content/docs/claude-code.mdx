@@ -15,11 +15,11 @@ leaves everything else to you.
 | tldr skill | `~/.claude/skills/tldr/` | Symlink to `claude/skills/tldr/` |
 | baby skill | `~/.claude/skills/baby/` | Symlink to `claude/skills/baby/` |
 | MCP servers | User scope in `~/.claude.json` | `claude mcp add-json --scope user` |
-| <Tool icon="plannotator.png">Plannotator</Tool> | Plugin, plus the `plannotator` binary | Plugin marketplace, binary installer |
-| <Tool icon="langfuse.svg">Langfuse tracing</Tool> | Plugin | Plugin marketplace, configured from `.env` |
-| <Tool icon="claude.svg" mono>Cardea plugin</Tool> | Plugin, a copy in `~/.claude/plugins/cache/` | `claude plugin install` from the repo |
+| Plannotator | Plugin, plus the `plannotator` binary | Plugin marketplace, binary installer |
+| Langfuse tracing | Plugin | Plugin marketplace, configured from `.env` |
+| Cardea plugin | Plugin, a copy in `~/.claude/plugins/cache/` | `claude plugin install` from the repo |
 | Five more plugins | Plugins | Their own marketplaces |
-| <Tool icon="herdr.svg">herdr</Tool>, graphify, playwright-cli, marimo and langfuse skills | `~/.claude/skills/herdr/`, `~/.claude/skills/graphify/`, `~/.claude/skills/playwright-cli/`, `~/.claude/skills/marimo-notebook/`, `~/.claude/skills/langfuse/` | `scripts/vendor-skills.sh` |
+| herdr, graphify, playwright-cli, marimo and langfuse skills | `~/.claude/skills/herdr/`, `~/.claude/skills/graphify/`, `~/.claude/skills/playwright-cli/`, `~/.claude/skills/marimo-notebook/`, `~/.claude/skills/langfuse/` | `scripts/vendor-skills.sh` |
 | Playwright CLI | The `playwright-cli` binary, with Chromium | `npm install -g @playwright/cli@0.1.24`, then `playwright-cli install-browser chromium` |
 
 ## What Cardea leaves alone
@@ -30,21 +30,7 @@ leaves everything else to you.
 
 ## MCP servers
 
-Registered at user scope, so every project gets them. Each run removes and re-adds them,
-which keeps them in line with the script.
-
-| Name | What it does | Command |
-|---|---|---|
-| <Tool icon="xcode.svg" mono>`xcodebuild`</Tool> | Builds, tests and runs iOS apps | `npx -y xcodebuildmcp@2.7.0 mcp` |
-| <Tool icon="swift.svg" mono>`swiftlens`</Tool> | Swift symbol lookups | `uvx swiftlens@0.2.14` |
-| <Tool icon="xcode.svg" mono>`xcode`</Tool> | Apple's bridge into a running Xcode | `xcrun mcpbridge` |
-| <Tool icon="container-use.png">`container-use`</Tool> | One container and git branch per agent | `container-use stdio` |
-| <Tool icon="basic-memory.png">`basic-memory`</Tool> | Durable notes on the NAS | HTTP, the URL from `.env` |
-
-Values come from `.env` when the script runs. After changing `.env`, run the script again.
-
-The Xcode bridge only connects while Xcode is open, so Claude Code reports it as failed the
-rest of the time. That is expected.
+See [MCP](/docs/mcp) for the five servers Cardea registers.
 
 ## Plugins
 
@@ -62,16 +48,7 @@ passed on standard input, kept out of the process list, and stored in the macOS 
 Cardea's own skills and agents ship as a Claude Code plugin. Skills load when a task calls
 for them, so unlike the rules in `CLAUDE.md` they cost nothing until they are used.
 
-| For | Skills |
-|---|---|
-| The self-hosted stack | `basic-memory`, `langfuse`, `obsidian`, `plannotator`, `graphify` |
-| Looking things up | `retrieval-order` |
-| Sessions | `handoff` |
-| Diagrams | `mermaid` |
-| iOS | `driving-ios-simulator-with-axe`, `rendering-swiftui-previews`, `sim-clone-restore`, `grdb` |
-| Reviews and releases | `panel`, `comment-audit`, `pre-commit-audit`, `semantic-commit`, `local-merge`, `post-merge-sweep`, `release-changelog`, `app-copy` |
-| Porting a UI to another framework | `blind-port` |
-| Recommendations | `recsys` |
+Every skill is listed, with what it does, on [Skills](/docs/skills).
 
 `retrieval-order` sets where an agent looks before it asks: the session, then the rules and
 memory, Basic Memory, the active plan, graphify, the code, git history, tests and
@@ -79,9 +56,7 @@ builds, skills and offline docs, the web, and you last. Notes and history answer
 something is the way it is; the code and live results answer what it is now, and win when a
 note is out of date.
 
-Three agents make up the design panel: a UX designer, the average chud and a power user. The
-`panel` skill puts a question to all three at once and merges their verdicts into one
-recommendation.
+The plugin's agents, including the three design panel agents, are on [Agents](/docs/agents).
 
 `install.sh` installs the plugin from your checkout. Claude Code keeps its own copy, in
 `~/.claude/plugins/cache/cardea/cardea/<version>/`, so an edit in the repo does nothing until
@@ -99,83 +74,9 @@ claude plugin marketplace add yuzuholic/cardea
 claude plugin install cardea@cardea
 ```
 
-## Orchestrator and implementer
+## Agents
 
-For a job with several parts, the plugin has two more agents. The orchestrator plans and
-checks; implementers make the changes. The orchestrator never writes feature or bug-fix code,
-only quick one-off edits such as a convention or a note, and an implementer never starts
-another agent. Both edit files with the Edit and Write tools, never with scripts.
-
-| Agent | Started by | Model | Effort |
-|---|---|---|---|
-| `cardea:orchestrator` | you | Opus 5.5 | medium |
-| `cardea:implementer` | you | Opus 5.5 | medium |
-| `cardea:implementer` | the orchestrator | Sonnet 5.5 | low |
-| `cardea:describer` | the orchestrator, through `blind-port` | Opus 5.5 | medium |
-| `cardea:reviewer` | the orchestrator, through `blind-port` | Opus 5.5 | medium |
-
-Start either one with its effort spelled out:
-
-```sh
-claude --agent cardea:orchestrator --effort medium
-claude --agent cardea:implementer --effort medium
-```
-
-The orchestrator reads the code (starting from the graphify map when the repo has one) and
-splits the work into tasks one implementer can finish alone, at most five at once. A plan with
-two or more implementers opens in Plannotator for your approval; a single task starts straight
-away. Each implementer gets a brief with the goal, the files, the limits and the check that
-proves it worked. It makes the change, runs the check and reports what it changed, what it
-checked and what it left.
-
-The orchestrator never waits on an implementer in the foreground, so it can answer you while
-they work. A task that changes files alongside others, or builds an app, gets its own git
-worktree and branch; read-only tasks and a lone small change run in your checkout.
-Every task gets a time budget, shown as minutes and a due time (for example "25 min, due
-16:40") in the plan and the brief, and the background wait that tracks the implementer is armed
-with it as its timeout. On an overrun the orchestrator investigates before acting. An
-implementer waiting on a prompt goes to you. One still producing output gets a single extension
-of half its budget and a one-line note to you. One with no new output, or any second overrun,
-is stopped and reported to you with its last output, and you decide. Outside herdr it cannot
-look inside a running subagent, so an overrun goes straight to you. Each batch's final report
-lists budget against actual time per task, and the orchestrator appends those rows to the Basic
-Memory note `plans/<Project> Task Time Estimates.md` (the last 50 tasks, plus rules of thumb by
-kind of task) and reads it when planning. Cardea has no Basic Memory project, so for cardea the
-report is the only record.
-An implementer that is blocked or needs something comes first: at the start of every turn the
-orchestrator checks implementer messages and pane states and resolves any blocker before other
-topics, and a blocker that needs you leads its reply. A permission denial goes to you, with the
-options of adding an allow rule for that exact command or approving it in the implementer's own
-tab. The orchestrator never runs the denied command itself, and never answers an approval or
-permission prompt for you. When a command depends on an allow rule, the brief gives its exact
-allow-listed spelling, and a denied implementer reports the denial verbatim instead of retrying
-with another spelling or tool.
-Implementers stage their work and never commit. The orchestrator reviews each one, then lands
-it in your checkout as uncommitted changes, one at a time in the order they finish, under a
-per-repo lock that also keeps orchestrators in other sessions from landing at the same time.
-If a change no longer applies, or its check fails in your checkout, it stops and asks you.
-After landing, it removes the worktree, its build data, the branch, the tab and any simulator
-clone the task made. Saying `close impl-<task>` does the same at any time. When the batch is
-done and any task used a simulator, it deletes unavailable simulators and reports the disk space
-freed. It also refreshes the graphify map. Once the work is merged to main, it runs the
-`post-merge-sweep` skill, which also clears what crashed or restarted sessions left behind.
-
-**Inside herdr**, every implementer gets a tab of its own in your workspace, named
-`impl-<task>`, so you can watch it work and step in. The orchestrator opens the tab without
-taking your focus, starts the implementer in it, sends the brief and reads the result back. If
-an implementer stops on a question (trusting a folder, a permission, anything else), the
-orchestrator asks you; it never answers for you.
-
-**Outside herdr**, it starts implementers as ordinary background subagents instead, on Sonnet
-at low effort.
-
-**Blind port** is for a UI feature that must match an existing web or Swift UI. The
-orchestrator runs the `blind-port` skill, which needs herdr. A describer looks at the reference
-UI (with `playwright-cli` for the web, or the AXe skill for a Swift app), writes a rubric and
-briefs an implementer in words and numbers only. The implementer is started with `CARDEA_BLIND`
-set, so it never sees the reference, and the describer grades its rendered UI against the rubric
-each round until 95 percent pass or six rounds are used. A reviewer then audits the code with
-the `comment-audit` skill and a logic rubric, fixes what fails and stages the result.
+See [Agents](/docs/agents) for the orchestrator, implementers and blind-port agents.
 
 ## Hooks
 

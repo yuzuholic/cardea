@@ -1,5 +1,5 @@
 ---
-title: Install
+title: Installation
 description: What install.sh does, and how to re-run it.
 ---
 
@@ -19,12 +19,19 @@ with the repo and finishes by checking that everything actually answers.
 2. **Configuration.** Asks for the Basic Memory and Langfuse addresses and the Langfuse keys,
    then writes them to `.env` (mode 600, never committed).
 3. **Rules.** Links `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`.
-4. **Claude Code.** Installed by the `Brewfile` as `claude-code@latest`. The script then
+4. **Claude Code.** Installed by the `Brewfile` as `claude-code`, the stable channel. The script then
    registers the MCP servers and plugins. See [Claude Code](/docs/claude-code). It also turns
    on the task list (`CLAUDE_CODE_ENABLE_TODO_TOOLS`) in `~/.claude/settings.json`.
 5. **herdr.** Installs herdr's Claude Code integration.
-6. **Checks.** Confirms each tool is installed, each NAS service answers, and each MCP server
-   connects.
+6. **Installs in parallel.** Plugins, graphify, Playwright CLI with Chromium, the vendored
+   skills and the MCP servers run side by side. Those that need no answers start before the
+   prompts. Under gum the run shows one live line per job with its time; otherwise it prints
+   one line as each job finishes. Each job logs to its own file. A failed job shows the end of
+   its log, the others still finish, and the script exits non-zero.
+7. **Checks.** Confirms each tool (including `pnpm`, `gh`, `jq` and the Docker daemon, which
+   OrbStack provides) is installed, each NAS service answers, and each MCP server connects.
+   It warns when `~/.local/bin`, where graphify and plannotator install, is not on `PATH`, and
+   ends with a count of what passed, warned and failed.
 
 ## Answering the prompts
 
@@ -72,6 +79,8 @@ Prerequisites:
 - Git for Windows, with Git Bash
 - Python 3: `winget install Python.Python.3.13`
 - uv: `winget install astral-sh.uv`
+- pnpm: `winget install pnpm.pnpm`
+- GitHub CLI: `winget install GitHub.cli`
 - Claude Code
 - Developer Mode (Settings > System > For developers), or an elevated PowerShell, so links can be created
 

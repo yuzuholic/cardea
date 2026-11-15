@@ -2,50 +2,126 @@
 @import 'fumadocs-ui/css/lib/default-colors.css';
 @import 'fumadocs-ui/css/preset.css';
 
-/* eva unit-01: dark purple #201d30 leads (dark background, light-mode text), amethyst
-   #995cd0 tints what is selected, green marks what is active or linked (inchworm #8edf5f
-   in dark, #3f6d4e in light, where inchworm washes out) and mandarin #ec7744 warns */
+/* turbopack's css parser rejects ::highlight(), so these two search dialog classes are not generated */
+@source not inline('[&_::highlight(fd-search)]:text-fd-primary');
+@source not inline('[&_::highlight(fd-search)]:underline');
+
+/* apple icloud web palette: near-black grey page, one blue accent, orange warns, green confirms */
 @theme {
-  --color-fd-background: #f6f4fa;
-  --color-fd-foreground: #201d30;
-  --color-fd-muted: #ece8f4;
-  --color-fd-muted-foreground: #5e5873;
-  --color-fd-popover: #fbfafd;
-  --color-fd-popover-foreground: #201d30;
-  --color-fd-card: #efecf6;
-  --color-fd-card-foreground: #201d30;
-  --color-fd-border: rgb(115 79 154 / 0.25);
-  --color-fd-primary: #3f6d4e;
-  --color-fd-primary-foreground: #f6f4fa;
-  --color-fd-secondary: #ece8f4;
-  --color-fd-secondary-foreground: #201d30;
-  --color-fd-accent: rgb(153 92 208 / 0.15);
-  --color-fd-accent-foreground: #201d30;
-  --color-fd-ring: #995cd0;
-  --color-fd-warning: #ec7744;
-  --color-fd-success: #3f6d4e;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --color-fd-background: #ffffff;
+  --color-fd-foreground: #1d1d1f;
+  --color-fd-muted: #f5f5f7;
+  --color-fd-muted-foreground: #6e6e73;
+  --color-fd-popover: #ffffff;
+  --color-fd-popover-foreground: #1d1d1f;
+  --color-fd-card: #f5f5f7;
+  --color-fd-card-foreground: #1d1d1f;
+  --color-fd-border: rgb(0 0 0 / 0.1);
+  --color-fd-primary: #0066cc;
+  --color-fd-primary-foreground: #ffffff;
+  --color-fd-secondary: #f5f5f7;
+  --color-fd-secondary-foreground: #1d1d1f;
+  --color-fd-accent: rgb(0 0 0 / 0.05);
+  --color-fd-accent-foreground: #1d1d1f;
+  --color-fd-ring: #0066cc;
+  --color-fd-warning: #c93400;
+  --color-fd-success: #248a3d;
 }
 
 .dark {
-  --color-fd-background: #201d30;
-  --color-fd-foreground: #f5f4f8;
-  --color-fd-muted: #2e2a45;
-  --color-fd-muted-foreground: #bdb8cc;
-  --color-fd-popover: #2a2640;
-  --color-fd-popover-foreground: #f5f4f8;
-  --color-fd-card: #2a2640;
-  --color-fd-card-foreground: #f5f4f8;
-  --color-fd-border: rgb(255 255 255 / 0.1);
-  /* inchworm marks what is active or linked, like unit-01's trim on the purple */
-  --color-fd-primary: #8edf5f;
-  --color-fd-primary-foreground: #201d30;
-  --color-fd-secondary: #2a2740;
-  --color-fd-secondary-foreground: #f5f4f8;
-  --color-fd-accent: rgb(153 92 208 / 0.22);
-  --color-fd-accent-foreground: #f5f4f8;
-  --color-fd-ring: #8edf5f;
-  --color-fd-warning: #ec7744;
-  --color-fd-success: #8edf5f;
+  --color-fd-background: #1d1d1f;
+  --color-fd-foreground: #f5f5f7;
+  --color-fd-muted: #2c2c2e;
+  --color-fd-muted-foreground: #a1a1a6;
+  --color-fd-popover: #2c2c2e;
+  --color-fd-popover-foreground: #f5f5f7;
+  --color-fd-card: #2c2c2e;
+  --color-fd-card-foreground: #f5f5f7;
+  --color-fd-border: rgb(255 255 255 / 0.12);
+  --color-fd-primary: #2997ff;
+  --color-fd-primary-foreground: #ffffff;
+  --color-fd-secondary: #2c2c2e;
+  --color-fd-secondary-foreground: #f5f5f7;
+  --color-fd-accent: rgb(255 255 255 / 0.08);
+  --color-fd-accent-foreground: #f5f5f7;
+  --color-fd-ring: #2997ff;
+  --color-fd-warning: #ff9f0a;
+  --color-fd-success: #30d158;
+}
+
+#nd-nav,
+#nd-docs-layout {
+  --fd-layout-width: 1200px;
+}
+
+body {
+  font-size: 17px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+#nd-nav {
+  background: color-mix(in oklab, var(--color-fd-background) 72%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+
+#nd-nav > div {
+  border-bottom: 0;
+  background: transparent;
+}
+
+@media (min-width: 768px) {
+  #nd-nav [class*='max-w-(--fd-layout-width)'] {
+    padding-inline: 3rem;
+  }
+}
+
+.prose {
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.prose :is(h1, h2, h3, h4) {
+  letter-spacing: -0.01em;
+}
+
+.prose h1 {
+  font-size: 2.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.prose :is(h2, h3, h4) {
+  font-weight: 600;
+}
+
+.prose a:not([data-card]) {
+  color: var(--color-fd-primary);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.prose a:not([data-card]):hover {
+  text-decoration: underline;
+}
+
+.prose :is(table, figure.shiki, pre, [role='alert']) {
+  border-radius: 12px;
+}
+
+.prose :is(table, figure.shiki) {
+  border-color: transparent;
+  background: var(--color-fd-card);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-fd-ring);
+  outline-offset: 2px;
+}
+
+[data-hero] {
+  background: linear-gradient(135deg, #2f6fe0 0%, #6a5ae0 55%, #4a3fc4 100%);
 }
 
 html {
@@ -57,64 +133,38 @@ html > body[data-scroll-locked] {
   --removed-body-scroll-bar-size: 0px !important;
 }
 
-/* unit-01's trim colours, kept to the landing: green stars and hover, orange viewfinder.
-   light mode uses the palette's dark green, since inchworm washes out on white */
-:root {
-  --eva-green: #3f6d4e;
-  --eva-orange: #ec7744;
+article h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
 }
 
-.dark {
-  --eva-green: #8edf5f;
+[data-toc-popover-trigger] svg[role='progressbar'] {
+  display: none;
 }
 
-@theme inline {
-  --color-eva-green: var(--eva-green);
-  --color-eva-orange: var(--eva-orange);
+[data-ring-fill]:focus-visible {
+  outline: none;
+  background: color-mix(in oklab, var(--color-fd-primary) 20%, transparent);
 }
 
-/* the banner draws in currentColor, so each group takes its colour from here */
-[data-banner] :is([data-stars], [data-edges], [data-lock]) {
-  color: var(--eva-green);
+.prose :is(td, th) code {
+  white-space: nowrap;
 }
 
-[data-banner] :is([data-corners], [data-coords]) {
-  color: var(--eva-orange);
-}
-
-/* ported from heuresis: faint dot grid behind the landing */
-:root {
-  --grid-dot: color-mix(in oklab, var(--color-fd-foreground) 12%, transparent);
-  --grid-size: 24px;
-}
-
-.dark {
-  --grid-dot: color-mix(in oklab, var(--color-fd-foreground) 10%, transparent);
-}
-
-/* without a mouse to aim the viewfinder, or with motion reduced, the title never gets
-   unblurred, so show it sharp from the start */
-@media (hover: none), (prefers-reduced-motion: reduce) {
-  [data-banner] [data-title-text] {
-    filter: none;
-    opacity: 1;
-  }
-
-  [data-banner] [data-skeleton] {
-    opacity: 0;
+@media (max-width: 767px) {
+  [data-toc-popover] {
+    position: static;
   }
 }
 
-/* below sm the banner shows the drawing 1:1 centred on x = 340, so its left edge is at
-   340 - 50vw and the title (x = 64) falls off it. slide the title 16px inside the edge */
-@media (max-width: 639px) {
-  [data-banner] [data-title-text] {
-    transform: translateX(max(0px, calc(292px - 50vw)));
+@media (min-width: 768px) {
+  body:has([data-sub-row]) [data-toc-popover] {
+    top: 9.5rem;
   }
 }
 
-.dot-grid {
-  background-color: var(--color-fd-background);
-  background-image: radial-gradient(var(--grid-dot) 1px, transparent 1.2px);
-  background-size: var(--grid-size) var(--grid-size);
+[data-toc-popover] > header {
+  background: var(--color-fd-background);
 }

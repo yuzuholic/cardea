@@ -1,9 +1,41 @@
 #!/bin/sh
-# fake claude: logs args (and stdin for configure)
+# fake claude: logs args (and stdin for configure) and remembers what was installed or
+# registered, so the installer can read it back. FAKE_FAIL=<text> fails any call whose arguments
+# contain it; FAKE_LOST=<text> makes the first matching (every matching one with FAKE_LOST_ALWAYS=1) install or add "succeed" without being
+# recorded, the way a lost concurrent write looks; FAKE_MCP_DOWN=<name> lists that server as
+# failing; FAKE_DELAY=<seconds> makes installs and registrations take that long.
+case "$*" in *"${FAKE_FAIL:-@@none@@}"*) echo "claude: simulated failure for: $*" >&2; exit 1 ;; esac
+st="$FAKE_LOG.state"; mkdir -p "$st/plugins" "$st/mcp"
+lost() {
+  case "$*" in *"${FAKE_LOST:-@@none@@}"*) ;; *) return 1 ;; esac
+  [ -n "${FAKE_LOST_ALWAYS:-}" ] || [ ! -e "$st/lost" ] || return 1
+  touch "$st/lost"
+}
+case "$1 $2" in
+  "plugin install"|"plugin update"|"mcp add-json") [ -z "${FAKE_DELAY:-}" ] || sleep "$FAKE_DELAY" ;;
+esac
 case "$*" in
   "--version") echo "2.1.310 (Claude Code)" ;;
-  "plugin list --json") echo '[{"id": "plannotator@plannotator"}]' ;;
-  "mcp list") echo "xcodebuild: npx ... - ✔ Connected"; echo "other: x - ✔ Connected" ;;
+  "plugin list --json")
+    printf '[{"id": "plannotator@plannotator"}'
+    for f in "$st"/plugins/*; do [ ! -e "$f" ] || printf ', {"id": "%s"}' "${f##*/}"; done
+    echo ']'
+    exit 0 ;;
+  "mcp list")
+    for f in "$st"/mcp/*; do
+      [ ! -e "$f" ] || { if [ "${f##*/}" = "${FAKE_MCP_DOWN:-}" ]; then echo "${f##*/}: x - ✗ Failed to connect"; else echo "${f##*/}: x - ✔ Connected"; fi; }
+    done
+    echo "other: x - ✔ Connected" ;;
+  "plugin install "*)
+    if ! lost "$@"; then
+      case "$3" in
+        superpowers) id=superpowers@superpowers-marketplace ;;
+        *) id="$3@$3" ;;
+      esac
+      touch "$st/plugins/$id"
+    fi ;;
+  "mcp add-json "*) lost "$@" || touch "$st/mcp/$5" ;;
+  "mcp remove "*) rm -f "$st/mcp/$5" ;;
   *configure*) echo "claude $* <<< $(cat)" >> "$FAKE_LOG"; exit 0 ;;
 esac
 echo "claude $*" >> "$FAKE_LOG"

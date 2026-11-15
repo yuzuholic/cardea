@@ -4,13 +4,16 @@ import { useState, type ReactNode } from 'react';
 
 // order here is the order a status sort uses
 const STATUS = {
-  Adopted: 'border-fd-success/40 bg-fd-success/10 [--dot:var(--color-fd-success)]',
-  Deferred: 'border-fd-warning/40 bg-fd-warning/10 [--dot:var(--color-fd-warning)]',
-  Replaced: 'border-fd-border bg-fd-muted [--dot:var(--color-fd-muted-foreground)]',
-  Removed: 'border-fd-border bg-fd-muted [--dot:var(--color-fd-muted-foreground)]',
-  Rejected: 'border-fd-error/40 bg-fd-error/10 [--dot:var(--color-fd-error)]',
+  Adopted: 'border-fd-success/40 bg-fd-success/10',
+  Deferred: 'border-fd-warning/40 bg-fd-warning/10',
+  Replaced: 'border-fd-border bg-fd-muted',
+  Removed: 'border-fd-border bg-fd-muted',
+  Rejected: 'border-fd-error/40 bg-fd-error/10',
 } as const;
 
+// opaque so rows scroll under it; top clears the sticky bar and tab row
+const HEAD =
+  'sticky top-[6.75rem] md:top-[9.5rem] z-10 border-b border-fd-border bg-[color-mix(in_oklab,var(--color-fd-card),var(--color-fd-foreground)_6%)] first:rounded-tl-xl last:rounded-tr-xl';
 const ORDER = Object.keys(STATUS);
 const WHY = '[&_code]:rounded [&_code]:bg-fd-muted [&_code]:px-1 [&_code]:text-[0.8125rem]';
 
@@ -37,46 +40,91 @@ export function DecisionsTable({ decisions }: { decisions: Decision[] }) {
     : decisions;
 
   return (
-    <div className="not-prose overflow-x-auto rounded-xl border bg-fd-card text-sm">
+    <>
+    <div className="not-prose mb-3 flex items-center gap-2 text-sm sm:hidden">
+      <label htmlFor="decisions-sort" className="text-fd-muted-foreground">
+        Sort by
+      </label>
+      <select
+        id="decisions-sort"
+        value={sort?.key ?? ''}
+        onChange={(e) => setSort({ key: e.target.value as Key, asc: sort?.asc ?? true })}
+        className="rounded-lg bg-fd-card px-3 py-1.5 text-fd-foreground"
+      >
+        <option value="" disabled>
+          Page order
+        </option>
+        {COLUMNS.map(({ key, label }) => (
+          <option key={key} value={key}>
+            {label}
+          </option>
+        ))}
+      </select>
+      <button
+        type="button"
+        disabled={!sort}
+        aria-label={sort?.asc === false ? 'Descending, switch to ascending' : 'Ascending, switch to descending'}
+        onClick={() => sort && setSort({ ...sort, asc: !sort.asc })}
+        className="cursor-pointer rounded-lg bg-fd-card px-3 py-1.5 disabled:opacity-40"
+      >
+        {sort?.asc === false ? '↓' : '↑'}
+      </button>
+    </div>
+    <ul className="not-prose space-y-3 text-sm sm:hidden">
+      {rows.map((row) => (
+        <li key={row.title} className="rounded-xl bg-fd-card p-4">
+          <p className="font-medium">{row.title}</p>
+          <p className="mt-1.5 flex items-center gap-2">
+            <span className="text-fd-muted-foreground">{row.area}</span>
+            <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${STATUS[row.status]}`}>
+              {row.status}
+            </span>
+          </p>
+          <div className={`mt-2 text-fd-muted-foreground ${WHY}`}>{row.why}</div>
+        </li>
+      ))}
+    </ul>
+    <div className="not-prose hidden rounded-xl bg-fd-card text-sm sm:block">
       <table className="w-full border-collapse">
         <thead>
-          <tr className="border-b text-left">
+          <tr className="text-left">
             {COLUMNS.map(({ key, label }) => {
               const active = sort?.key === key;
               return (
-                <th key={key} aria-sort={active ? (sort.asc ? 'ascending' : 'descending') : 'none'} className="p-0 font-medium">
+                <th key={key} aria-sort={active ? (sort.asc ? 'ascending' : 'descending') : 'none'} className={`${HEAD} min-w-0 p-0 font-medium ${key === 'title' ? 'min-w-56' : ''}`}>
                   <button
                     type="button"
+                    data-ring-fill
                     onClick={() => setSort({ key, asc: active ? !sort.asc : true })}
-                    className="inline-flex w-full items-center gap-1 whitespace-nowrap px-3 py-2.5 hover:text-fd-primary"
+                    className="group inline-flex w-full cursor-pointer items-center gap-1 whitespace-nowrap px-3 py-2.5 hover:text-fd-primary"
                   >
                     {label}
-                    <span aria-hidden className={active ? 'text-fd-primary' : 'text-fd-muted-foreground/50'}>
-                      {active && !sort.asc ? '↓' : '↑'}
+                    <span
+                      aria-hidden
+                      className={active ? 'text-fd-foreground' : 'text-fd-muted-foreground opacity-40 group-hover:text-fd-primary group-hover:opacity-100 group-focus-visible:opacity-100'}
+                    >
+                      {active ? (sort.asc ? '↑' : '↓') : '↕'}
                     </span>
                   </button>
                 </th>
               );
             })}
-            <th className="hidden px-3 py-2.5 font-medium sm:table-cell">Why</th>
+            <th className={`${HEAD} px-3 py-2.5 font-medium`}>Why</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.title} className="border-b align-top last:border-b-0">
+            <tr key={row.title} id={row.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')} className="scroll-mt-52 border-b border-fd-border align-top last:border-b-0">
               <td className="px-3 py-3">
                 <p className="font-medium">{row.title}</p>
-                {/* phones have no room for a fourth column, so the reason sits under the name */}
-                <div className={`mt-1 text-fd-muted-foreground sm:hidden ${WHY}`}>{row.why}</div>
               </td>
               <td className="whitespace-nowrap px-3 py-3 text-fd-muted-foreground">{row.area}</td>
               <td className="px-3 py-3">
                 <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium ${STATUS[row.status]}`}>
-                  <span aria-hidden className="size-1.5 rounded-full bg-(--dot)" />
                   {row.status}
                 </span>
               </td>
-              <td className={`hidden min-w-64 px-3 py-3 text-fd-muted-foreground sm:table-cell ${WHY}`}>
+              <td className={`min-w-64 px-3 py-3 text-fd-muted-foreground ${WHY}`}>
                 {row.why}
               </td>
             </tr>
@@ -84,5 +132,6 @@ export function DecisionsTable({ decisions }: { decisions: Decision[] }) {
         </tbody>
       </table>
     </div>
+    </>
   );
 }

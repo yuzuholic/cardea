@@ -8,7 +8,7 @@ the table says so.
 
 | Area | Tool | Pin |
 |---|---|---|
-| Agent | <Tool icon="claude.svg" mono>Claude Code</Tool> | `claude-code@latest` cask, updated with `brew upgrade` |
+| Agent | <Tool icon="claude.svg" mono>Claude Code</Tool> | `claude-code` cask (stable channel), updated with `brew upgrade` |
 | Plan review | <Tool icon="plannotator.png">Plannotator</Tool> | `v0.28.31` binary; plugin follows its marketplace |
 | Observability | <Tool icon="langfuse.svg">Langfuse plugin</Tool> | marketplace (`1.2.1` at time of writing) |
 | Multiplexer | <Tool icon="herdr.svg">herdr</Tool> | brew, unpinned |
@@ -20,7 +20,8 @@ the table says so.
 | iOS symbols | <Tool icon="swift.svg" mono>SwiftLens</Tool> | `swiftlens@0.2.14` |
 | iOS bridge | <Tool icon="xcode.svg" mono>`xcrun mcpbridge`</Tool> | ships with Xcode 26.3+ |
 | iOS language server feed | <Tool icon="xcode.svg" mono>xcode-build-server</Tool> | brew, unpinned |
-| Isolation | <Tool icon="container-use.png">container-use</Tool> | `0.4.2` (brew cask) |
+| Isolation | <Tool icon="container-use.png">container-use</Tool> | `0.4.2` (brew cask); OrbStack (brew cask) provides Docker |
+| JS tooling and GitHub | pnpm, gh | brew, unpinned |
 | NAS launcher | <Tool icon="docker.svg" mono>`yuzuholic/cardea`</Tool> | `0.2.0` on Docker Hub, built `FROM docker:29.9.0-cli` (Compose v5.6.0) |
 | Observability backend | <Tool icon="langfuse.svg">Langfuse</Tool> | `4.70.0` (NAS) |
 | Memory | <Tool icon="basic-memory.png">Basic Memory</Tool> | `0.24.1` (NAS) |
@@ -29,8 +30,9 @@ the table says so.
 Homebrew installs the current version of a formula. It cannot hold an exact one, so the brew
 rows move when their makers release.
 
-Claude Code comes from Homebrew's `claude-code@latest` cask, which follows Anthropic's
-newest release. The plain `claude-code` cask follows the slower stable channel. Don't also
+Claude Code comes from Homebrew's `claude-code` cask, which follows Anthropic's stable
+channel. The `claude-code@latest` cask follows the newest release instead; the two conflict, so
+only one can be installed. Don't also
 use Anthropic's native installer: it puts a second copy in `~/.local/bin`, which comes first
 on `PATH` and updates itself separately. The install script warns if it finds one.
 

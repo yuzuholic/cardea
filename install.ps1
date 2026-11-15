@@ -20,7 +20,7 @@ $script:Bad = 0
 
 function Join-Parts { [IO.Path]::Combine([string[]]$args) }
 
-function Step($Text) { Write-Host ''; Write-Host "> $Text" -ForegroundColor Cyan }
+function Step($Text) { Write-Host ''; Write-Host "> $Text" -ForegroundColor Blue }
 function Ok($Text) { Write-Host "  + $Text" -ForegroundColor Green }
 function Info($Text) { Write-Host "  . $Text" -ForegroundColor DarkGray }
 function Warn($Text) { Write-Host "  ! $Text" -ForegroundColor Yellow }
@@ -57,6 +57,8 @@ function Get-Prerequisites {
         @{ Name = 'Git for Windows with Git Bash'; Ok = (Test-GitBash); Hint = 'winget install Git.Git' }
         @{ Name = 'Python 3 (py)'; Ok = (Test-Python); Hint = 'winget install Python.Python.3.13' }
         @{ Name = 'uv (graphify)'; Ok = [bool](Get-Command uv -ErrorAction SilentlyContinue); Hint = 'winget install astral-sh.uv' }
+        @{ Name = 'pnpm'; Ok = [bool](Get-Command pnpm -ErrorAction SilentlyContinue); Hint = 'winget install pnpm.pnpm' }
+        @{ Name = 'GitHub CLI (gh)'; Ok = [bool](Get-Command gh -ErrorAction SilentlyContinue); Hint = 'winget install GitHub.cli' }
         @{ Name = 'claude CLI'; Ok = [bool](Get-Command claude -ErrorAction SilentlyContinue); Hint = 'install Claude Code, then run claude once' }
     )
 }
@@ -351,7 +353,9 @@ function Invoke-Checks {
     }
 }
 
-Write-Host 'Cardea'
+Write-Host ''
+Write-Host '  Cardea'
+Write-Host '  Installs Claude Code, its MCP servers and plugins, and their NAS services.' -ForegroundColor DarkGray
 
 if ($Check) {
     Invoke-Checks
@@ -426,5 +430,9 @@ Install-VendoredSkills
 Invoke-Checks
 
 Write-Host ''
-Write-Host 'next: claude auth login, then re-run anytime. .\install.ps1 -Check probes without changing anything.'
+Write-Host 'Next' -ForegroundColor Blue
+Write-Host '  1. claude auth login'
+Write-Host '     sign in with your claude subscription (interactive)'
+Write-Host ''
+Write-Host '  re-run anytime. .\install.ps1 -Check probes without changing anything.' -ForegroundColor DarkGray
 Write-Host ''

@@ -155,9 +155,14 @@ for mode in $MODES; do
   # --no-prompt on a terminal asks nothing and finishes.
   setup no-prompt "$mode"
   term 'sh install.sh --no-prompt' || fail "$name: exited non-zero"
-  said '.env created from the example'
+  said '.env created with placeholder values (mode 600)'
   has_env BASIC_MEMORY_URL http://truenas.local:8766/mcp
   installed http://truenas.local:3000
+  said 'running 12 jobs in parallel'
+  said '~/.local/bin is not on PATH'
+  grep -ao '[0-9]* ok ' "$out" | head -1 > "$work/ok-$mode"
+  # without gum the jobs print one line each, and nothing moves the cursor or hides it.
+  if [ "$mode" = plain ]; then unsaid "$ESC[?25"; unsaid "${ESC}[2K"; fi
 
   # an existing settings.json keeps its other keys and env entries.
   setup settings "$mode"
@@ -173,6 +178,45 @@ for mode in $MODES; do
   called 'brew bundle'
   installed http://truenas.local:3000
 
+  # one failing job is reported with its log, the others still finish, and the run exits non-zero.
+  setup job-fail "$mode"
+  if term 'sh install.sh --no-prompt' FAKE_FAIL='plugin install ponytail'; then fail "$name: a failed job should fail the run"; fi
+  said 'plugin ponytail'
+  said 'simulated failure for: plugin install ponytail'
+  called 'plugin install humanizer'
+  called 'plugin install cloudflare'
+  calls 'mcp add-json -s user' 5
+  said 'failed'
+
+  # a plugin install that "succeeds" without being recorded is found and redone, and says so.
+  setup lost-plugin "$mode"
+  term 'sh install.sh --no-prompt' FAKE_LOST='plugin install ponytail' || fail "$name: exited non-zero"
+  calls 'plugin install ponytail' 2
+  said 'plugin ponytail: a concurrent write was lost and repaired'
+  installed http://truenas.local:3000
+
+  # the same for an MCP server, and a server that fails its health check is named.
+  setup lost-mcp "$mode"
+  term 'sh install.sh --no-prompt' FAKE_LOST='mcp add-json -s user swiftlens' FAKE_MCP_DOWN=xcode || fail "$name: exited non-zero"
+  calls 'mcp add-json -s user swiftlens' 2
+  said 'mcp swiftlens: a concurrent write was lost and repaired'
+  said 'xcodebuild — connected'
+  said 'xcode — failed to connect'
+
+  # still missing after the retry is a failure.
+  setup lost-always "$mode"
+  if term 'sh install.sh --no-prompt' FAKE_LOST='plugin install ponytail' FAKE_LOST_ALWAYS=1; then fail "$name: an unrecorded plugin should fail the run"; fi
+  said 'plugin ponytail: not recorded, even after a retry'
+
+  # a missing required tool fails --check and is named in the summary; optional ones only note it.
+  setup no-pnpm "$mode"
+  mkdir "$dir/bin"
+  for f in "$ROOT"/tests/fakes/*; do [ "${f##*/}" = pnpm ] || ln -s "$f" "$dir/bin/${f##*/}"; done
+  P="$dir/bin:$SYS"; [ "$mode" = plain ] || P="$dir/bin:$work/gumbin:$SYS"
+  if term 'sh install.sh --check'; then fail "$name: --check should fail without pnpm"; fi
+  said 'not installed: pnpm'
+  said 'docker — optional, not installed'
+
   # --check probes and changes nothing.
   setup check "$mode"
   term 'sh install.sh --check' || fail "$name: exited non-zero"
@@ -182,19 +226,24 @@ for mode in $MODES; do
   said 'basic memory — not configured'
 done
 
+# the same run counts the same number of ok lines with and without gum.
+[ -z "$GUM" ] || [ "$(cat "$work/ok-plain")" = "$(cat "$work/ok-gum")" ] || fail "ok counts differ: plain $(cat "$work/ok-plain"), gum $(cat "$work/ok-gum")"
+
 # no terminal at all (curl | sh from a script): plain output, no colour, still completes.
 setup no-tty plain
 P="$ROOT/tests/fakes:$work/gumbin:$SYS"
 run env EAT_STDIN=1 sh -c 'cat install.sh | sh -s -- --no-prompt' < /dev/null || fail "$name: exited non-zero"
 installed http://truenas.local:3000
 unsaid "$ESC"
+said '✓ plugin ponytail'
+said ' ok '
 
 if [ -n "$GUM" ]; then
   # NO_COLOR turns gum off too.
   setup no-color gum
   term 'NO_COLOR=1 sh install.sh --no-prompt' || fail "$name: exited non-zero"
   installed http://truenas.local:3000
-  unsaid "$ESC[38;"
+  unsaid "$ESC"
 
   # a fresh mac: no gum until the Brewfile runs, then gum for the rest of the run.
   setup bootstrap plain

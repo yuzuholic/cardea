@@ -7,7 +7,7 @@ export function baseOptions(): BaseLayoutProps {
       title: (
         <>
           {/* the mark is drawn in white, so flip it to black on the light theme */}
-          <img src={`${basePath}/mark.svg`} alt="" width={22} height={22} className="invert dark:invert-0" />
+          <img src={`${basePath}/mark.svg`} alt="" width={32} height={32} className="-my-1 invert dark:invert-0" />
           {appName}
         </>
       ),

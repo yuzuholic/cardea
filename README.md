@@ -54,7 +54,7 @@ It is safe to run again at any time. Existing config is backed up, never overwri
 ### Windows: `install.ps1`
 
 Links the global rules and the `tldr` and `baby` skills, registers the Basic Memory MCP server
-and the plugins. Needs Git for Windows, Python 3, uv, Claude Code and Developer Mode
+and the plugins. Needs Git for Windows, Python 3, uv, pnpm, GitHub CLI, Claude Code and Developer Mode
 (Settings > System > For developers) or an elevated shell. Put `BASIC_MEMORY_URL` in `.env` to
 register Basic Memory.
 
@@ -167,7 +167,7 @@ Each test is one script: `sh tests/<name>.sh`. CI runs them all, plus a docs bui
 | `nas` | The launcher builds, missing secrets are named, the stack renders with the right paths, and it really starts, picks up `.env` changes and stops. | Docker |
 | `install` | `install.sh` end to end against stand-in tools and a stand-in NAS: every prompt case, `--no-prompt`, `--check`, and piping from curl, with and without gum. | expect, python3 |
 
-To read the docs locally: `cd docs && npm install && npm run dev`.
+To read the docs locally: `cd docs && pnpm install && pnpm dev`.
 
 ## License
 

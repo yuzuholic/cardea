@@ -1,0 +1,2 @@
+#!/bin/sh
+echo "jq $*" >> "$FAKE_LOG"

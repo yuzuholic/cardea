@@ -48,8 +48,9 @@ sudo docker compose up -d
 
 - **Claude Code**, signed in with your Claude subscription.
 - **Global rules** from `claude/CLAUDE.md`, linked into `~/.claude/`.
-- **Five MCP servers** registered for every project: XcodeBuildMCP, SwiftLens, the Xcode
-  bridge, container-use and Basic Memory.
+- **Five [MCP servers](/docs/mcp)** registered for every project: XcodeBuildMCP, SwiftLens,
+  the Xcode bridge, container-use and Basic Memory.
+- **[Skills](/docs/skills) and [agents](/docs/agents)** from the Cardea plugin.
 - **Two plugins**: Plannotator for reviewing plans, and Langfuse for tracing every session.
 - **The NAS services** those talk to: Basic Memory and Langfuse, started on the NAS by
   `nas/compose.yml`.
@@ -57,10 +58,11 @@ sudo docker compose up -d
 ## Where to go next
 
 <Cards>
-  <Card title="Install" href="/docs/install" description="What the script does, step by step" />
+  <Card title="Installation" href="/docs/install" description="What the script does, step by step" />
   <Card title="Claude Code" href="/docs/claude-code" description="What Cardea owns, and what it leaves alone" />
-  <Card title="Stack" href="/docs/stack" description="Every tool and its pinned version" />
-  <Card title="NAS" href="/docs/nas" description="Services, ports, secrets and backups" />
-  <Card title="Decisions" href="/docs/decisions" description="Why the stack looks like this" />
-  <Card title="Tests" href="/docs/tests" description="What each test checks and how CI runs them" />
+  <Card title="Skills" href="/docs/skills" description="Every skill and what it does" />
+  <Card title="Agents" href="/docs/agents" description="Orchestrator, implementers, blind port and the panel" />
+  <Card title="MCP" href="/docs/mcp" description="The servers Cardea registers, and where each runs" />
+  <Card title="Stack" href="/docs/stack" description="Every tool and its pinned version, with the NAS and decisions" />
+  <Card title="Verification" href="/docs/tests" description="What each test checks and how CI runs them" />
 </Cards>
